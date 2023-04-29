@@ -9,14 +9,14 @@
 CC=tcc # much faster compilation than gcc
 
 ## Main file
-SRC=lisp.c
+SRC=./src/lisp.c
 
 ## Formatter
 STYLE_BLUEPRINT=webkit
 FORMATTER=clang-format -i -style=$(STYLE_BLUEPRINT)
 
 build: $(SRC)
-	$(cc) $(src) -o lisp
+	$(CC) $(SRC) -o lisp
 
 format: $(SRC)
 	$(FORMATTER) $(SRC)
