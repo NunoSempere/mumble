@@ -25,6 +25,7 @@ int main(int argc, char** argv)
     lispy    : /^/ <operator> <expr>+ /$/ ;             \
   ",
         Number, Operator, Expr, Lispy);
+
     int loop = 1;
     while (loop) {
         char* input = readline("mumble> ");
@@ -33,12 +34,15 @@ int main(int argc, char** argv)
             loop = 0;
             puts("");
         } else {
-            printf("You said: %s\n", input);
+            printf("Did you say \"%s\"?\n", input);
             add_history(input);
             // can't add if input is NULL
         }
         free(input);
     }
+
+    /* Undefine and Delete our Parsers */
+    mpc_cleanup(4, Number, Operator, Expr, Lispy);
 
     return 0;
 }
