@@ -7,6 +7,15 @@
 #include "mpc/mpc.h"
 #define VERBOSE 1
 
+long evaluate_unary_operation(char* op, long x)
+{
+    if (!strcmp(op, "+")) {
+        return x;
+    } else if (!strcmp(op, "-")) {
+        return -x;
+		}
+    return 0;
+}
 long evaluate_operation(char* op, long x, long y)
 {
     if (!strcmp(op, "+")) {
@@ -17,8 +26,6 @@ long evaluate_operation(char* op, long x, long y)
         return x * y;
     } else if (!strcmp(op, "/")) {
         return x / y;
-    } else if (!strcmp(op, "^")) {
-        return 42; // to take care of later
     }
     return 0;
 }
@@ -31,8 +38,6 @@ int is_ignorable(mpc_ast_t* t){
 long evaluate_ast(mpc_ast_t* t)
 {
     // Base case #1: It's a number
-    if (VERBOSE)
-        printf("\n\nEvaluating the ast");
     if (strstr(t->tag, "number")) {
         if (VERBOSE)
             printf("\nCase #1, %s", t->contents);
@@ -46,17 +51,28 @@ long evaluate_ast(mpc_ast_t* t)
             printf("\nCase #2, %s", t->children[0]->contents);
         return atoi(t->children[0]->contents);
     }
+		
 		// Base case #3: Top level parenthesis
     if (t->children_num == 2 && strstr(t->children[0]->tag, "expr|>") && !strcmp(t->children[1]->tag, "regex")) {
         if (VERBOSE)
             printf("\nCase #3, top level parenthesis");
 				return evaluate_ast(t->children[0]);
     }
-
-    // Case #4: Unary operations case
-    // Case #5: Binary (or more) operations case
+		
+		// "Real" cases
     long x;
     char* operation;
+
+    // Case #4: Unary operations case
+    if (t->children_num == 3 && is_ignorable(t->children[0]) && strstr(t->children[1]->tag, "operator")) {
+        operation = t->children[1]->contents;
+        if (VERBOSE)
+            printf("\nCase #4, unary operation %s", operation);
+        x = evaluate_ast(t->children[2]);
+        x = evaluate_unary_operation(operation, x);
+    }
+		
+    // Case #5: Binary (or more) operations case
     if (t->children_num > 3 && is_ignorable(t->children[0]) && strstr(t->children[1]->tag, "operator")) {
         operation = t->children[1]->contents;
         if (VERBOSE)
@@ -80,13 +96,13 @@ void print_ast(mpc_ast_t* ast, int num_tabs)
 		for(int i=0; i<num_tabs;i++){
 			strcat(tabs, "  ");
 		}
-    printf("%sTag: %s\n", tabs, ast->tag);
-    printf("%sContents: %s\n", tabs, strcmp(ast->contents, "") ? ast->contents : "None");
-    printf("%sNumber of children: %i\n", tabs, ast->children_num);
+    printf("\n%sTag: %s", tabs, ast->tag);
+    printf("\n%sContents: %s", tabs, strcmp(ast->contents, "") ? ast->contents : "None");
+    printf("\n%sNumber of children: %i", tabs, ast->children_num);
     /* Print the children */
     for (int i = 0; i < ast->children_num; i++) {
         mpc_ast_t* child_i = ast->children[i];
-        printf("%sChild #%d\n", tabs, i);
+        printf("\n%sChild #%d", tabs, i);
 				print_ast(child_i, 1);
     }
 }
@@ -128,7 +144,10 @@ int main(int argc, char** argv)
                 mpc_ast_t* ast = result.output;
 
                 // Print AST if VERBOSE
-								print_ast(ast, 0);
+								if(VERBOSE) print_ast(ast, 0);
+								
+								// Evaluate the AST
+								if(VERBOSE) printf("\n\nEvaluating the AST");
                 long result = evaluate_ast(ast);
                 printf("\nResult: %li\n", result);
             } else {
