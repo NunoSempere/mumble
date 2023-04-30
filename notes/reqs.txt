@@ -1,0 +1,4 @@
+sudo apt install libedit-dev
+# edit line
+
+For Windows: <https://buildyourownlisp.com/chapter4_interactive_prompt>
