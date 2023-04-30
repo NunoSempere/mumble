@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     number   : /-?[0-9]+/ ;                             \
     operator : '+' | '-' | '*' | '/' ;                  \
     expr     : <number> | '(' <operator> <expr>+ ')' ;  \
-    mumble    : /^/ <operator> <expr>+ /$/ ;             \
+    mumble    : /^/ <operator> <expr>+ | <expr>/$/ ;             \
   ",
         Number, Operator, Expr, Mumble);
 
