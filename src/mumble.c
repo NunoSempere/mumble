@@ -35,15 +35,15 @@ int main(int argc, char** argv)
             puts("");
         } else {
             /* Attempt to Parse the user Input */
-            mpc_result_t r;
-            if (mpc_parse("<stdin>", input, Mumble, &r)) {
+            mpc_result_t result;
+            if (mpc_parse("<stdin>", input, Mumble, &result)) {
                 /* On Success Print the AST */
-                mpc_ast_print(r.output);
-                mpc_ast_delete(r.output);
+                mpc_ast_print(result.output);
+                mpc_ast_delete(result.output);
             } else {
                 /* Otherwise Print the Error */
-                mpc_err_print(r.error);
-                mpc_err_delete(r.error);
+                mpc_err_print(result.error);
+                mpc_err_delete(result.error);
             }
             // printf("Did you say \"%s\"?\n", input);
             add_history(input);
