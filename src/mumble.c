@@ -37,20 +37,20 @@ void print_lispval(lispval l){
 		case LISPVAL_ERR:
 			switch(l.err){
 				case LISPERR_BAD_OP:
-					printf("Error: Invalid operator");
+					printf("\nError: Invalid operator");
 					break;
 				case LISPERR_BAD_NUM:
-					printf("Error: Invalid number");
+					printf("\nError: Invalid number");
 					break;
 				case LISPERR_DIV_ZERO:
-					printf("Error: Division by zero");
+					printf("\nError: Division by zero");
 					break;
 				default: 
-					printf("Error: Unknown error");
+					printf("\nError: Unknown error");
 			}
 			break;
 		default:
-			printf("Unknown lispval type");
+			printf("\nUnknown lispval type");
 	}
 }
 
@@ -137,7 +137,7 @@ lispval evaluate_ast(mpc_ast_t* t)
     lispval x;
     char* operation;
 
-    // Case #4: Unary operations case
+    // Case #4: Top level unary operation
     if (t->children_num == 3 && is_ignorable(t->children[0]) && strstr(t->children[1]->tag, "operator")) {
         operation = t->children[1]->contents;
         if (VERBOSE)
@@ -153,12 +153,18 @@ lispval evaluate_ast(mpc_ast_t* t)
             printf("\nCase #5, %s", operation);
         x = evaluate_ast(t->children[2]);
         int i = 3;
+				int is_unary = 1;
         while ((i < t->children_num) && strstr(t->children[i]->tag, "expr")) {
 					  // note that when reaching a closing parenthesis, ^ returns false
             lispval y = evaluate_ast(t->children[i]);
             x = evaluate_operation(operation, x, y);
             i++;
+						is_unary = 0;
         }
+				if(is_unary){
+					printf("\nCase #5.b, unary operation %s", operation);
+					x = evaluate_unary_operation(operation, x);
+				}
     }
 
     return x;
