@@ -7,14 +7,14 @@
 
 int main(int argc, char** argv)
 {
-    puts("Mumble version 0.0.1\n");
+    puts("Mumble version 0.0.2\n");
     puts("Press Ctrl+C/Ctrl+D to exit\n");
 
     /* Create Some Parsers */
     mpc_parser_t* Number = mpc_new("number");
     mpc_parser_t* Operator = mpc_new("operator");
     mpc_parser_t* Expr = mpc_new("expr");
-    mpc_parser_t* Lispy = mpc_new("lispy");
+    mpc_parser_t* Mumble = mpc_new("mumble");
 
     /* Define them with the following Language */
     mpca_lang(MPCA_LANG_DEFAULT,
@@ -22,9 +22,9 @@ int main(int argc, char** argv)
     number   : /-?[0-9]+/ ;                             \
     operator : '+' | '-' | '*' | '/' ;                  \
     expr     : <number> | '(' <operator> <expr>+ ')' ;  \
-    lispy    : /^/ <operator> <expr>+ /$/ ;             \
+    mumble    : /^/ <operator> <expr>+ /$/ ;             \
   ",
-        Number, Operator, Expr, Lispy);
+        Number, Operator, Expr, Mumble);
 
     int loop = 1;
     while (loop) {
@@ -34,7 +34,18 @@ int main(int argc, char** argv)
             loop = 0;
             puts("");
         } else {
-            printf("Did you say \"%s\"?\n", input);
+            /* Attempt to Parse the user Input */
+            mpc_result_t r;
+            if (mpc_parse("<stdin>", input, Mumble, &r)) {
+                /* On Success Print the AST */
+                mpc_ast_print(r.output);
+                mpc_ast_delete(r.output);
+            } else {
+                /* Otherwise Print the Error */
+                mpc_err_print(r.error);
+                mpc_err_delete(r.error);
+            }
+            // printf("Did you say \"%s\"?\n", input);
             add_history(input);
             // can't add if input is NULL
         }
@@ -42,7 +53,7 @@ int main(int argc, char** argv)
     }
 
     /* Undefine and Delete our Parsers */
-    mpc_cleanup(4, Number, Operator, Expr, Lispy);
+    mpc_cleanup(4, Number, Operator, Expr, Mumble);
 
     return 0;
 }
