@@ -7,6 +7,79 @@
 #include "mpc/mpc.h"
 #define VERBOSE 1
 
+// Types
+typedef struct {
+  int type;
+  long num;
+  int err;
+} lispval;
+
+enum { LISPVAL_NUM, LISPVAL_ERR };
+enum { LISPERR_DIV_ZERO, LISPERR_BAD_OP, LISPERR_BAD_NUM };
+
+lispval lispval_num(long x){
+	lispval v;
+	v.type = LISPVAL_NUM;
+	v.num = x;
+	return v;
+}
+lispval lispval_err(int i){
+	lispval v;
+	v.type = LISPVAL_ERR;
+	v.err = i;
+	return v;
+}
+void print_lispval(lispval l){
+	switch(l.type){
+		case LISPVAL_NUM:
+			printf("%li", l.num);
+			break;
+		case LISPVAL_ERR:
+			switch(l.err){
+				case LISPERR_BAD_OP:
+					printf("Error: Invalid operator");
+					break;
+				case LISPERR_BAD_NUM:
+					printf("Error: Invalid number");
+					break;
+				case LISPERR_DIV_ZERO:
+					printf("Error: Division by zero");
+					break;
+				default: 
+					printf("Error: Unknown error");
+			}
+			break;
+		default:
+			printf("Unknown lispval type");
+	}
+	printf("\n");
+}
+
+// Utils
+int is_ignorable(mpc_ast_t* t){
+	int is_regex = !strcmp(t->tag, "regex");
+	int is_parenthesis = !strcmp(t->tag, "char") && !strcmp(t->contents, "(");
+	return is_regex || is_parenthesis;
+}
+
+void print_ast(mpc_ast_t* ast, int num_tabs)
+{
+		char tabs[100] = "";
+		for(int i=0; i<num_tabs;i++){
+			strcat(tabs, "  ");
+		}
+    printf("\n%sTag: %s", tabs, ast->tag);
+    printf("\n%sContents: %s", tabs, strcmp(ast->contents, "") ? ast->contents : "None");
+    printf("\n%sNumber of children: %i", tabs, ast->children_num);
+    /* Print the children */
+    for (int i = 0; i < ast->children_num; i++) {
+        mpc_ast_t* child_i = ast->children[i];
+        printf("\n%sChild #%d", tabs, i);
+				print_ast(child_i, 1);
+    }
+}
+
+// Operations
 long evaluate_unary_operation(char* op, long x)
 {
     if (!strcmp(op, "+")) {
@@ -30,11 +103,7 @@ long evaluate_operation(char* op, long x, long y)
     return 0;
 }
 
-int is_ignorable(mpc_ast_t* t){
-	int is_regex = !strcmp(t->tag, "regex");
-	int is_parenthesis = !strcmp(t->tag, "char") && !strcmp(t->contents, "(");
-	return is_regex || is_parenthesis;
-}
+// Evaluate the AST
 long evaluate_ast(mpc_ast_t* t)
 {
     // Base case #1: It's a number
@@ -90,25 +159,10 @@ long evaluate_ast(mpc_ast_t* t)
     return x;
 }
 
-void print_ast(mpc_ast_t* ast, int num_tabs)
-{
-		char tabs[100] = "";
-		for(int i=0; i<num_tabs;i++){
-			strcat(tabs, "  ");
-		}
-    printf("\n%sTag: %s", tabs, ast->tag);
-    printf("\n%sContents: %s", tabs, strcmp(ast->contents, "") ? ast->contents : "None");
-    printf("\n%sNumber of children: %i", tabs, ast->children_num);
-    /* Print the children */
-    for (int i = 0; i < ast->children_num; i++) {
-        mpc_ast_t* child_i = ast->children[i];
-        printf("\n%sChild #%d", tabs, i);
-				print_ast(child_i, 1);
-    }
-}
-
+// Main
 int main(int argc, char** argv)
 {
+		// Info
     puts("Mumble version 0.0.2\n");
     puts("Press Ctrl+C/Ctrl+D to exit\n");
 
@@ -127,7 +181,9 @@ int main(int argc, char** argv)
     mumble    : /^/ <operator> <expr>+ | <expr>/$/ ;             \
   ",
         Number, Operator, Expr, Mumble);
+		
 
+		// Initialize a repl
     int loop = 1;
     while (loop) {
         char* input = readline("mumble> ");
@@ -155,7 +211,6 @@ int main(int argc, char** argv)
                 mpc_err_print(result.error);
                 mpc_err_delete(result.error);
             }
-            // printf("Did you say \"%s\"?\n", input);
             add_history(input);
             // can't add if input is NULL
         }
