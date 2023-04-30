@@ -32,14 +32,27 @@ int main(int argc, char** argv)
         if (input == NULL) {
             // ^ catches Ctrl+D
             loop = 0;
-            puts("");
         } else {
             /* Attempt to Parse the user Input */
             mpc_result_t result;
             if (mpc_parse("<stdin>", input, Mumble, &result)) {
                 /* On Success Print the AST */
-                mpc_ast_print(result.output);
-                mpc_ast_delete(result.output);
+                // mpc_ast_print(result.output);
+                /* Load AST from output */
+                mpc_ast_t* ast = result.output;
+								char* no_contents = "None";
+								printf("\n");
+                printf("Tag: %s\n", ast->tag);
+                printf("Contents: %s\n", strcmp(ast->contents, "") ? ast->contents : no_contents);
+                printf("Number of children: %i\n", ast->children_num);
+								/* Print the children */
+								for(int i=0; i < ast->children_num; i++){
+									mpc_ast_t* child_i = ast->children[i];
+									printf("Child #%d\n", i);
+									printf("\tTag: %s\n", child_i->tag);
+									printf("\tContents: %s\n", strcmp(child_i->contents, "") ? child_i->contents : no_contents);
+									printf("\tNumber of children: %i\n", child_i->children_num);
+								}
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
@@ -49,6 +62,7 @@ int main(int argc, char** argv)
             add_history(input);
             // can't add if input is NULL
         }
+        puts("");
         free(input);
     }
 
