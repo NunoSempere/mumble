@@ -23,6 +23,11 @@ long evaluate_operation(char* op, long x, long y)
     return 0;
 }
 
+int is_ignorable(mpc_ast_t* t){
+	int is_regex = !strcmp(t->tag, "regex");
+	int is_parenthesis = !strcmp(t->tag, "char") && !strcmp(t->contents, "(");
+	return is_regex || is_parenthesis;
+}
 long evaluate_ast(mpc_ast_t* t)
 {
     // Base case #1: It's a number
@@ -41,24 +46,25 @@ long evaluate_ast(mpc_ast_t* t)
             printf("\nCase #2, %s", t->children[0]->contents);
         return atoi(t->children[0]->contents);
     }
-
-    // Case #3: Parenthesis case
-
-    if (t->children_num == 2 && !strcmp(t->children[0]->tag, "expr|>") && strstr(t->children[1]->tag, "regex")) {
-        return evaluate_ast(t->children[0]);
+		// Base case #3: Top level parenthesis
+    if (t->children_num == 2 && strstr(t->children[0]->tag, "expr|>") && !strcmp(t->children[1]->tag, "regex")) {
+        if (VERBOSE)
+            printf("\nCase #3, top level parenthesis");
+				return evaluate_ast(t->children[0]);
     }
-    // Case #4: Unary operations case
 
+    // Case #4: Unary operations case
     // Case #5: Binary (or more) operations case
     long x;
     char* operation;
-    if (t->children_num > 3 && !strcmp(t->children[0]->tag, "regex") && strstr(t->children[1]->tag, "operator")) {
+    if (t->children_num > 3 && is_ignorable(t->children[0]) && strstr(t->children[1]->tag, "operator")) {
         operation = t->children[1]->contents;
         if (VERBOSE)
             printf("\nCase #5, %s", operation);
         x = evaluate_ast(t->children[2]);
         int i = 3;
         while ((i < t->children_num) && strstr(t->children[i]->tag, "expr")) {
+					  // note that when reaching a closing parenthesis, ^ returns false
             long y = evaluate_ast(t->children[i]);
             x = evaluate_operation(operation, x, y);
             i++;
