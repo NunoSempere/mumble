@@ -32,7 +32,7 @@ lispval lispval_err(int i){
 void print_lispval(lispval l){
 	switch(l.type){
 		case LISPVAL_NUM:
-			printf("%li", l.num);
+			printf("\n%li", l.num);
 			break;
 		case LISPVAL_ERR:
 			switch(l.err){
@@ -52,7 +52,6 @@ void print_lispval(lispval l){
 		default:
 			printf("Unknown lispval type");
 	}
-	printf("\n");
 }
 
 // Utils
@@ -80,45 +79,51 @@ void print_ast(mpc_ast_t* ast, int num_tabs)
 }
 
 // Operations
-long evaluate_unary_operation(char* op, long x)
+lispval evaluate_unary_operation(char* op, lispval x)
 {
+	  if(x.type == LISPVAL_ERR) return x;
     if (!strcmp(op, "+")) {
-        return x;
+        return lispval_num(x.num);
     } else if (!strcmp(op, "-")) {
-        return -x;
+        return lispval_num(-x.num);
 		}
-    return 0;
+		return lispval_err(LISPERR_BAD_OP);
 }
-long evaluate_operation(char* op, long x, long y)
+lispval evaluate_operation(char* op, lispval x, lispval y)
 {
+	  if(x.type == LISPVAL_ERR) return x;
+	  if(y.type == LISPVAL_ERR) return y;
     if (!strcmp(op, "+")) {
-        return x + y;
+        return lispval_num(x.num + y.num);
     } else if (!strcmp(op, "-")) {
-        return x - y;
+        return lispval_num(x.num - y.num);
     } else if (!strcmp(op, "*")) {
-        return x * y;
+        return lispval_num(x.num * y.num);
     } else if (!strcmp(op, "/")) {
-        return x / y;
+			  if (y.num == 0) return lispval_err(LISPERR_DIV_ZERO);
+        return lispval_num(x.num / y.num);
     }
-    return 0;
+		return lispval_err(LISPERR_BAD_OP);
 }
 
 // Evaluate the AST
-long evaluate_ast(mpc_ast_t* t)
+lispval evaluate_ast(mpc_ast_t* t)
 {
     // Base case #1: It's a number
     if (strstr(t->tag, "number")) {
         if (VERBOSE)
             printf("\nCase #1, %s", t->contents);
-        return atoi(t->contents);
+				errno = 0;
+				long x = strtol(t->contents, NULL, 10);
+				return errno != ERANGE ? lispval_num(x) : lispval_err(LISPERR_BAD_NUM);
     }
 
     // Base case #2: It's a number inputted into the REPL
     // note: strcmp returns a 0 if both chars* have the same contents.
     if (t->children_num == 2 && strstr(t->children[0]->tag, "number") && !strcmp(t->children[1]->tag, "regex")) {
         if (VERBOSE)
-            printf("\nCase #2, %s", t->children[0]->contents);
-        return atoi(t->children[0]->contents);
+            printf("\nCase #2, top level num");
+        return evaluate_ast(t->children[0]);
     }
 		
 		// Base case #3: Top level parenthesis
@@ -129,7 +134,7 @@ long evaluate_ast(mpc_ast_t* t)
     }
 		
 		// "Real" cases
-    long x;
+    lispval x;
     char* operation;
 
     // Case #4: Unary operations case
@@ -150,7 +155,7 @@ long evaluate_ast(mpc_ast_t* t)
         int i = 3;
         while ((i < t->children_num) && strstr(t->children[i]->tag, "expr")) {
 					  // note that when reaching a closing parenthesis, ^ returns false
-            long y = evaluate_ast(t->children[i]);
+            lispval y = evaluate_ast(t->children[i]);
             x = evaluate_operation(operation, x, y);
             i++;
         }
@@ -204,8 +209,8 @@ int main(int argc, char** argv)
 								
 								// Evaluate the AST
 								if(VERBOSE) printf("\n\nEvaluating the AST");
-                long result = evaluate_ast(ast);
-                printf("\nResult: %li\n", result);
+                lispval result = evaluate_ast(ast);
+								print_lispval(result);
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
