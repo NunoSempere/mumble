@@ -31,8 +31,7 @@ enum {
 };
 
 // Constructors
-lispval*
-lispval_num(long x)
+lispval* lispval_num(long x)
 {
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_NUM;
@@ -40,8 +39,7 @@ lispval_num(long x)
     return v;
 }
 
-lispval*
-lispval_err(char* message)
+lispval* lispval_err(char* message)
 {
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_ERR;
@@ -50,8 +48,7 @@ lispval_err(char* message)
     return v;
 }
 
-lispval*
-lispval_sym(char* symbol)
+lispval* lispval_sym(char* symbol)
 {
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_SYM;
@@ -60,8 +57,7 @@ lispval_sym(char* symbol)
     return v;
 }
 
-lispval*
-lispval_sexpr(void)
+lispval* lispval_sexpr(void)
 {
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_SEXPR;
@@ -93,24 +89,21 @@ void delete_lispval(lispval* v)
 }
 
 // Read ast into a lispval object
-lispval*
-lispval_append_child(lispval* parent, lispval* child)
+lispval* lispval_append_child(lispval* parent, lispval* child)
 {
     parent->count = parent->count + 1;
     parent->cell = realloc(parent->cell, sizeof(lispval) * parent->count);
     parent->cell[parent->count - 1] = child;
     return parent;
 }
-lispval*
-read_lispval_num(mpc_ast_t* t)
+lispval* read_lispval_num(mpc_ast_t* t)
 {
     errno = 0;
     long x = strtol(t->contents, NULL, 10);
     return errno != ERANGE ? lispval_num(x)
                            : lispval_err("Error: Invalid number.");
 }
-lispval*
-read_lispval(mpc_ast_t* t)
+lispval* read_lispval(mpc_ast_t* t)
 {
     if (strstr(t->tag, "number")) {
         return read_lispval_num(t);
@@ -214,6 +207,46 @@ void print_ast(mpc_ast_t* ast, int indent_level)
     free(indent);
 }
 
+// Evaluate the lisval
+lispval* pop_lispval(lispval* v, int i)
+{
+	lispval* r = v->cell[i];
+  /* Shift memory after the item at "i" over the top */
+  memmove(&v->cell[i], &v->cell[i+1],
+    sizeof(lispval*) * (v->count-i-1));
+
+  /* Decrease the count of items in the list */
+  v->count--;
+
+  /* Reallocate the memory used */
+  v->cell = realloc(v->cell, sizeof(lispval*) * v->count);
+  return r;
+}
+
+lispval* take_lispval(lispval* v, int i){
+	lispval* x = pop_lispval(v, i);
+	delete_lispval(v);
+	return x;
+}
+
+lispval* evaluate_lispval(lispval* l)
+{
+  // Evaluate the children
+	for(int i=0; i<l->count; i++){
+		l->cell[i] = evaluate_lispval(l->cell[i]);
+		
+		// Check if any are errors.
+		if(l->cell[i]->type == LISPVAL_ERR){ 
+			char* msg = l->cell[i]->err; // lispval_take
+			lispval* l2 = lispval_err(msg);
+			delete_lispval(l);
+			return l2;
+		}
+	}
+
+
+	return l;
+}
 // Main
 int main(int argc, char** argv)
 {
