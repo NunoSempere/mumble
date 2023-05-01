@@ -223,11 +223,12 @@ lispval* pop_lispval(lispval* v, int i)
   return r;
 }
 
-lispval* take_lispval(lispval* v, int i){
+lispval* take_lispval(lispval* v, int i){ // Unneeded.
 	lispval* x = pop_lispval(v, i);
 	delete_lispval(v);
 	return x;
 }
+
 lispval* builtin_op(char* op, lispval* v){
 	// For now, ensure all args are numbers
 	for(int i=0; i<v->count; i++){
@@ -291,6 +292,7 @@ lispval* evaluate_lispval(lispval* l)
 	if(l->count >=2 && ( (l->cell[0])->type == LISPVAL_SYM)){
 		lispval* op = pop_lispval(l, 0);
 		lispval* result = builtin_op(op->sym, l);
+		delete_lispval(op);
 		return result;
 	}
 	return l;
