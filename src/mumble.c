@@ -207,7 +207,7 @@ void print_ast(mpc_ast_t* ast, int indent_level)
     free(indent);
 }
 
-// Evaluate the lisval
+// Evaluate the lispval
 lispval* pop_lispval(lispval* v, int i)
 {
 	lispval* r = v->cell[i];
@@ -229,21 +229,77 @@ lispval* take_lispval(lispval* v, int i){
 	return x;
 }
 
+lispval* builtin_op(char* op, lispval* v){
+	// For now, ensure all args are numbers
+	for(int i=0; i<v->count; i++){
+		if(v->cell[i]->type != LISPVAL_NUM){
+			return lispval_err("Error: Operating on non-numbers");
+		}
+	}
+	// Check how many elements
+	if(v->count == 0){
+			return lispval_err("Error: No numbers on which to operate!");
+	} else if(v->count == 1) {
+		if(strcmp(op, "-")){
+			return lispval_num(-v->cell[0]->num);
+		}else {
+			return lispval_err("Error: Non minus unary operation");
+		}
+	} else if (v->count >= 2){
+		lispval* x = pop_lispval(v,0);
+
+		while(v->count > 0){
+			/* Pop the next element */
+			lispval* y = pop_lispval(v, 0);
+
+			if (strcmp(op, "+") == 0) { x->num += y->num; }
+			if (strcmp(op, "-") == 0) { x->num -= y->num; }
+			if (strcmp(op, "*") == 0) { x->num *= y->num; }
+
+			if (strcmp(op, "/") == 0) {
+				if (y->num == 0) {
+					delete_lispval(x); delete_lispval(y);
+					return lispval_err("Error: Division By Zero!");
+				}
+				x->num /= y->num;
+			}
+
+			delete_lispval(y);
+		}
+		return x;
+	} else {
+		return lispval_err("Error: Incorrect number of args. Perhaps a lispval->count was wrongly initialized?");
+	}
+}
+
 lispval* evaluate_lispval(lispval* l)
 {
   // Evaluate the children
 	for(int i=0; i<l->count; i++){
 		l->cell[i] = evaluate_lispval(l->cell[i]);
 		
+	}
 		// Check if any are errors.
+	for(int i=0; i<l->count; i++){
 		if(l->cell[i]->type == LISPVAL_ERR){ 
-			char* msg = l->cell[i]->err; // lispval_take
-			lispval* l2 = lispval_err(msg);
-			delete_lispval(l);
-			return l2;
+			return pop_lispval(l, i);
 		}
 	}
-
+	
+	// Check if the first item of a list is a symbol.
+	if(l->count > 0 && l->cell[0]->type == LISPVAL_SYM){
+		/* lispval* lisp_op = pop_lispval(l, 0);
+		lispval* result = builtin_op(lisp_op->sym, l);
+		delete_lispval(l);
+		delete_lispval(lisp_op);
+		return result;
+		*/
+		return l;
+	}else{
+		return l;
+		// In particular, leave (5) (the list that contains 5) as is
+		// rather than returning 5.
+	}
 
 	return l;
 }
@@ -295,12 +351,15 @@ int main(int argc, char** argv)
                 // if(VERBOSE) printf("\n\nEvaluating the AST");
                 // lispval result = evaluate_ast(ast);
                 lispval* l = read_lispval(ast);
-                if (VERBOSE)
+                if (VERBOSE){
                     printf("\n\nTree printing: ");
-                print_lispval_tree(l, 0);
-                if (VERBOSE)
+										print_lispval_tree(l, 0);
+								}
+                if (VERBOSE){
                     printf("\nParenthesis printing: \n");
-                print_lispval_parenthesis(l);
+										print_lispval_parenthesis(l);
+								}
+								evaluate_lispval(l);
                 delete_lispval(l);
             } else {
                 /* Otherwise Print the Error */
