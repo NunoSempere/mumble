@@ -14,7 +14,7 @@ typedef struct {
   int err;
 } lispval;
 
-enum { LISPVAL_NUM, LISPVAL_ERR };
+enum { LISPVAL_NUM, LISPVAL_ERR, LISPVAL_SYM, LISPVAL_SEXPR };
 enum { LISPERR_DIV_ZERO, LISPERR_BAD_OP, LISPERR_BAD_NUM };
 
 lispval lispval_num(long x){
