@@ -228,7 +228,7 @@ lispval* take_lispval(lispval* v, int i){
 	delete_lispval(v);
 	return x;
 }
-
+/*
 lispval* builtin_op(char* op, lispval* v){
 	// For now, ensure all args are numbers
 	for(int i=0; i<v->count; i++){
@@ -249,7 +249,7 @@ lispval* builtin_op(char* op, lispval* v){
 		lispval* x = pop_lispval(v,0);
 
 		while(v->count > 0){
-			/* Pop the next element */
+			// Pop the next element 
 			lispval* y = pop_lispval(v, 0);
 
 			if (strcmp(op, "+") == 0) { x->num += y->num; }
@@ -271,6 +271,49 @@ lispval* builtin_op(char* op, lispval* v){
 		return lispval_err("Error: Incorrect number of args. Perhaps a lispval->count was wrongly initialized?");
 	}
 }
+*/
+
+
+lispval* builtin_op(lispval* a, char* op) {
+	return lispval_num(1);
+  /* Ensure all arguments are numbers */
+  for (int i = 0; i < a->count; i++) {
+    if (a->cell[i]->type != LISPVAL_NUM) {
+      // delete_lispval(a);
+      return lispval_err("Cannot operate on non-number!");
+    }
+  }
+
+  /* Pop the first element */
+  lispval* x = pop_lispval(a, 0);
+
+  /* If no arguments and sub then perform unary negation */
+  if ((strcmp(op, "-") == 0) && a->count == 0) {
+    x->num = -x->num;
+  }
+
+  /* While there are still elements remaining */
+  while (a->count > 0) {
+
+    /* Pop the next element */
+    lispval* y = pop_lispval(a, 0);
+
+    if (strcmp(op, "+") == 0) { x->num += y->num; }
+    if (strcmp(op, "-") == 0) { x->num -= y->num; }
+    if (strcmp(op, "*") == 0) { x->num *= y->num; }
+    if (strcmp(op, "/") == 0) {
+      if (y->num == 0) {
+        delete_lispval(x); delete_lispval(y);
+        return lispval_err("Division By Zero!");
+      }
+      x->num /= y->num;
+    }
+
+    delete_lispval(y);
+  }
+
+  delete_lispval(a); return x;
+}
 
 lispval* evaluate_lispval(lispval* l)
 {
@@ -285,22 +328,13 @@ lispval* evaluate_lispval(lispval* l)
 			return pop_lispval(l, i);
 		}
 	}
-	
-	// Check if the first item of a list is a symbol.
-	if(l->count > 0 && l->cell[0]->type == LISPVAL_SYM){
-		/* lispval* lisp_op = pop_lispval(l, 0);
-		lispval* result = builtin_op(lisp_op->sym, l);
-		delete_lispval(l);
-		delete_lispval(lisp_op);
-		return result;
-		*/
-		return l;
-	}else{
-		return l;
-		// In particular, leave (5) (the list that contains 5) as is
-		// rather than returning 5.
-	}
 
+	// Check if the first element is an operation.
+	if(l->count >=2 && ( (l->cell[0])->type == LISPVAL_SYM)){
+		lispval* op = pop_lispval(l, 0);
+		lispval* result = builtin_op(l, op->sym);
+		return result;
+	}
 	return l;
 }
 // Main
@@ -359,7 +393,8 @@ int main(int argc, char** argv)
                     printf("\nParenthesis printing: \n");
 										print_lispval_parenthesis(l);
 								}
-								evaluate_lispval(l);
+								lispval* result = evaluate_lispval(l);
+								print_lispval_parenthesis(result);
                 delete_lispval(l);
             } else {
                 /* Otherwise Print the Error */
