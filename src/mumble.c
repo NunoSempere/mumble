@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "mpc/mpc.h"
-#define VERBOSE 1
+#define VERBOSE 0
 #define LISPVAL_ASSERT(cond, err) \
     if (!(cond)) {                \
         return lispval_err(err);  \
@@ -122,12 +122,8 @@ lispval* lispval_qexpr(void)
 }
 
 // Destructor
-void print_lispval_tree(lispval* v, int indent_level);
 void delete_lispval(lispval* v)
 {
-	  if(v == NULL) return; 
-    printf("\n Freeing:");
-		print_lispval_tree(v, 2);
     switch (v->type) {
     case LISPVAL_NUM:
         if(VERBOSE) printf("\nFreed num");
@@ -656,7 +652,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 
 	  // Check if this is a symbol
 		if(l->type == LISPVAL_SYM){
-			return get_from_lispenv(l->sym, env);
+			get_from_lispenv(l->sym, env);
 		}
 
 		// Evaluate the children if needed
@@ -666,32 +662,16 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         }
     }
     // Check if any are errors.
-		// lispval* error = NULL;
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_ERR) {
-					return l->cell[i];
-            // error = clone_lispval(l->cell[i]);
+            return clone_lispval(l->cell[i]);
         }
     }
-		// Now the problem is that evlauate_lispval is recursive
-		// and it also allocates new memory.
-		// This means that I want to delete the allocated memory.
-		// But the problem is that it could delete the original object l
-		// leading to a double-free error
-		// To mitigate this, I've made the delete_lispval function
-		// a bit more robust, to be able to handle cases where it had
-		// already been deleted
-		// But the compromise here is to not care about destruction to 
-		// the original object in case of an error.
-		// if(error!=NULL){
-			// delete_lispval(l);
-		//	return error;
-		// }
 
     // Check if the first element is an operation.
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_FUNC)) {
         lispval* temp = clone_lispval(l->cell[0]);
-        lispval* f = pop_lispval(temp, 0);
+        lispval* f = pop_lispval(l, 0);
         lispval* operands = temp;
         // lispval* operation = clone_lispval(l->cell[0]);
         // lispval* operands = lispval_sexpr();
@@ -774,7 +754,6 @@ int main(int argc, char** argv)
                     print_lispval_parenthesis(answer);
                     printf("\n");
                 }
-
                 delete_lispval(l);
                 delete_lispval(answer);
             } else {

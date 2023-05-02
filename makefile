@@ -6,7 +6,7 @@
 # make uninstall
 
 ## C compiler
-CC=gcc # much faster compilation than gcc
+CC=tcc # much faster compilation than gcc
 COMPILER_FLAGS=#-g3 -Wall -Wextra -Wconversion -Wdouble-promotion -Wno-unused-parameter -Wno-unused-function -Wno-sign-conversion -fsanitize=undefined 
 # exclude: -fsanitize-trap, because I'm using an old version of gcc and couldn't bother getting a new one.
 ## ^ from <https://nullprogram.com/blog/2023/04/29/>
@@ -35,7 +35,7 @@ STYLE_BLUEPRINT=webkit
 FORMATTER=clang-format -i -style=$(STYLE_BLUEPRINT)
 
 build: $(SRC)
-	$(CC) $(COMPILER_FLAGS)  $(INCS) $(SRC) $(MPC) -o mumble $(LIBS) $(DEBUG)
+	$(CC) $(COMPILER_FLAGS)  $(INCS) $(SRC) $(MPC) -o mumble $(LIBS)
 
 format: $(SRC)
 	$(FORMATTER) $(SRC)
