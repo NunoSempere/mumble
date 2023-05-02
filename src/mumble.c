@@ -7,7 +7,9 @@
 #include "mpc/mpc.h"
 #define VERBOSE 0
 #define LISPVAL_ASSERT(cond, err) \
-	if (!(cond)) { return lispval_err(err); }
+    if (!(cond)) {                \
+        return lispval_err(err);  \
+    }
 
 // Types
 typedef struct lispval {
@@ -24,7 +26,7 @@ enum {
     LISPVAL_ERR,
     LISPVAL_SYM,
     LISPVAL_SEXPR,
-		LISPVAL_QEXPR,
+    LISPVAL_QEXPR,
 };
 
 enum {
@@ -36,6 +38,7 @@ enum {
 // Constructors
 lispval* lispval_num(double x)
 {
+    printf("\nAllocated num");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_NUM;
     v->count = 0;
@@ -45,6 +48,7 @@ lispval* lispval_num(double x)
 
 lispval* lispval_err(char* message)
 {
+    printf("\nAllocated err");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_ERR;
     v->count = 0;
@@ -55,6 +59,7 @@ lispval* lispval_err(char* message)
 
 lispval* lispval_sym(char* symbol)
 {
+    printf("\nAllocated sym");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_SYM;
     v->count = 0;
@@ -65,6 +70,7 @@ lispval* lispval_sym(char* symbol)
 
 lispval* lispval_sexpr(void)
 {
+    printf("\nAllocated sexpr");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_SEXPR;
     v->count = 0;
@@ -74,6 +80,7 @@ lispval* lispval_sexpr(void)
 
 lispval* lispval_qexpr(void)
 {
+    printf("\nAllocated qexpr");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_QEXPR;
     v->count = 0;
@@ -84,24 +91,51 @@ lispval* lispval_qexpr(void)
 // Destructor
 void delete_lispval(lispval* v)
 {
+    // printf("\n1");
     switch (v->type) {
     case LISPVAL_NUM:
+        printf("\nFreed num");
+        // free(v);
+        // v = NULL;
+        // printf("\n2");
         break;
     case LISPVAL_ERR:
-        free(v->err);
+        printf("\nFreed err");
+        // printf("\n3");
+        if (v->err != NULL)
+            free(v->err);
+        v->err = NULL;
         break;
     case LISPVAL_SYM:
-        free(v->sym);
+        printf("\nFreed sym");
+        // printf("\n4");
+        if (v->sym != NULL)
+            free(v->sym);
+        v->sym = NULL;
         break;
     case LISPVAL_SEXPR:
+        // printf("\n5");
     case LISPVAL_QEXPR:
+        printf("\nFreed s/qexpr");
+        // printf("\n6");
         for (int i = 0; i < v->count; i++) {
-            delete_lispval(v->cell[i]);
+            if (v->cell[i] != NULL)
+                delete_lispval(v->cell[i]);
+            v->cell[i] = NULL;
         }
-        free(v->cell);
+        // printf("\n8");
+        if (v->cell != NULL)
+            free(v->cell);
+        v->cell = NULL;
+
+        // printf("\n9");
         break;
     }
-    free(v);
+    if (v != NULL)
+        free(v);
+    // printf("\n10");
+    v = NULL;
+    // printf("\n11");
 }
 
 // Read ast into a lispval object
@@ -122,35 +156,36 @@ lispval* read_lispval_num(mpc_ast_t* t)
 
 lispval* read_lispval(mpc_ast_t* t)
 {
-		// Non-ignorable children
-		// Relevant for the edge-case of considering the case where you 
-		// only have one top level item.
-	  int c = 0;
-		int c_index = -1;
-		for(int i=0; i<t->children_num; i++){
-      mpc_ast_t* child = t->children[i];
-			if( ( strcmp(child->tag, "regex") != 0 ) || (strcmp(child->contents, "") != 0 ) || child->children_num != 0 ){
-				c++;
-				c_index = i;
-			}
-		}
-		if(VERBOSE) printf("\nNon ignorable children: %i", c);
+    // Non-ignorable children
+    // Relevant for the edge-case of considering the case where you
+    // only have one top level item.
+    int c = 0;
+    int c_index = -1;
+    for (int i = 0; i < t->children_num; i++) {
+        mpc_ast_t* child = t->children[i];
+        if ((strcmp(child->tag, "regex") != 0) || (strcmp(child->contents, "") != 0) || child->children_num != 0) {
+            c++;
+            c_index = i;
+        }
+    }
+    if (VERBOSE)
+        printf("\nNon ignorable children: %i", c);
 
     if (strstr(t->tag, "number")) {
         return read_lispval_num(t);
     } else if (strstr(t->tag, "symbol")) {
         return lispval_sym(t->contents);
-		} else if ((strcmp(t->tag, ">") == 0) && (c==1)) {
-			return read_lispval(t->children[c_index]);
+    } else if ((strcmp(t->tag, ">") == 0) && (c == 1)) {
+        return read_lispval(t->children[c_index]);
     } else if ((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr") || strstr(t->tag, "qexpr")) {
         lispval* x;
-				if((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr")){
-					x = lispval_sexpr();
-				} else if(strstr(t->tag, "qexpr")){
-					x = lispval_qexpr();
-				} else {
-					return lispval_err("Error: Unreachable code state reached.");
-				}
+        if ((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr")) {
+            x = lispval_sexpr();
+        } else if (strstr(t->tag, "qexpr")) {
+            x = lispval_qexpr();
+        } else {
+            return lispval_err("Error: Unreachable code state reached.");
+        }
 
         for (int i = 0; i < (t->children_num); i++) {
             if (strcmp(t->children[i]->contents, "(") == 0) {
@@ -159,18 +194,16 @@ lispval* read_lispval(mpc_ast_t* t)
                 continue;
             } else if (strcmp(t->children[i]->contents, "{") == 0) {
                 continue;
-            }
-            else if (strcmp(t->children[i]->contents, "}") == 0) {
+            } else if (strcmp(t->children[i]->contents, "}") == 0) {
                 continue;
-            }
-            else if (strcmp(t->children[i]->tag, "regex") == 0) {
+            } else if (strcmp(t->children[i]->tag, "regex") == 0) {
                 continue;
             } else {
-            x = lispval_append_child(x, read_lispval(t->children[i])); 
-						}
+                x = lispval_append_child(x, read_lispval(t->children[i]));
+            }
         }
         return x;
-		} else {
+    } else {
         lispval* err = lispval_err("Unknown AST type.");
         return err;
     }
@@ -212,6 +245,7 @@ void print_lispval_tree(lispval* v, int indent_level)
         printf("%s", v->sym);
     }
     free(indent);
+    indent = NULL;
 }
 
 void print_lispval_parenthesis(lispval* v)
@@ -264,57 +298,58 @@ void print_ast(mpc_ast_t* ast, int indent_level)
         print_ast(child_i, indent_level + 2);
     }
     free(indent);
+    indent = NULL;
 }
 
 // Lispval helpers
 lispval* clone_lispval(lispval* old)
 {
-	  lispval* new;
-		// print_lispval_tree(old, 0);
-		// printf("\nCloning lispval of type %d\n", old->type);
-	  switch(old->type){
+    lispval* new;
+    // print_lispval_tree(old, 0);
+    // printf("\nCloning lispval of type %d\n", old->type);
+    switch (old->type) {
     case LISPVAL_NUM:
-				// printf("\n1");
-				// printf("\nnum: %f", old->num);
-				// print_lispval_tree(old, 0);
-			  new = lispval_num(old->num);
-				// printf("\nAssigned new");
-				// printf("\n count: %i", old->count);
+        // printf("\n1");
+        // printf("\nnum: %f", old->num);
+        // print_lispval_tree(old, 0);
+        new = lispval_num(old->num);
+        // printf("\nAssigned new");
+        // printf("\n count: %i", old->count);
         break;
     case LISPVAL_ERR:
-				// printf("2");
+        // printf("2");
         new = lispval_err(old->err);
         break;
     case LISPVAL_SYM:
-				// printf("3");
+        // printf("3");
         new = lispval_sym(old->sym);
         break;
     case LISPVAL_SEXPR:
-				// printf("4");
-				new = lispval_sexpr();
-				break; 
-    case LISPVAL_QEXPR:
-				// printf("\n5");
-				new = lispval_qexpr();
+        // printf("4");
+        new = lispval_sexpr();
         break;
-    default: 
-				return lispval_err("Error: Cloning element of unknown type.");
-		}
-		
-		// printf("\n6");
-		if(old->count > 0 && (old->type == LISPVAL_QEXPR || old->type == LISPVAL_SEXPR) ){
-			for (int i = 0; i < old->count; i++) {
-					lispval* temp_child = old->cell[i];
-					lispval* child = clone_lispval(temp_child);
-					lispval_append_child(new, child);
-			}
-		}
+    case LISPVAL_QEXPR:
+        // printf("\n5");
+        new = lispval_qexpr();
+        break;
+    default:
+        return lispval_err("Error: Cloning element of unknown type.");
+    }
+
+    // printf("\n6");
+    if (old->count > 0 && (old->type == LISPVAL_QEXPR || old->type == LISPVAL_SEXPR)) {
+        for (int i = 0; i < old->count; i++) {
+            lispval* temp_child = old->cell[i];
+            lispval* child = clone_lispval(temp_child);
+            lispval_append_child(new, child);
+        }
+    }
     return new;
 }
 
 lispval* pop_lispval(lispval* v, int i)
 {
-	  LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function pop passed too many arguments");
+    LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function pop passed too many arguments");
     lispval* r = v->cell[i];
     /* Shift memory after the item at "i" over the top */
     memmove(&v->cell[i], &v->cell[i + 1],
@@ -330,7 +365,7 @@ lispval* pop_lispval(lispval* v, int i)
 
 lispval* take_lispval(lispval* v, int i)
 { // Unneeded.
-	  LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function take_lispval passed too many arguments");
+    LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function take_lispval passed too many arguments");
     lispval* x = pop_lispval(v, i);
     delete_lispval(v);
     return x;
@@ -338,102 +373,108 @@ lispval* take_lispval(lispval* v, int i)
 
 // Operations
 // Ops for q-expressions
-lispval* builtin_head(lispval* v){
-  // printf("Entering builtin_head with v->count = %d and v->cell[0]->type = %d\n", v->count, v->cell[0]->type);
-	// head { 1 2 3 }
-	// But actually, that gets processd into head ({ 1 2 3 }), hence the v->cell[0]->cell[0];
-	LISPVAL_ASSERT(v->count == 1, "Error: function head passed too many arguments");
-	LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to head is not a q-expr, i.e., a bracketed list.");
-  LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to head is {}");
-  // printf("Passed assertions, v->cell[0]->count = %d\n", v->cell[0]->count);
-  // print_lispval_parenthesis(v);
-	// print_lispval_parenthesis(v->cell[0]);
-	lispval* result = clone_lispval(v->cell[0]->cell[0]); 
-  // printf("Cloned lispval, result->type = %d\n", result->type);
-	// lispval* result = pop_lispval(v->cell[0], 0); 
-  // ^ also possible
-	// A bit unclear. Pop seems like it would depend on the size of the array. clone depends on the sie of head.
-	// either way the original array will soon be deleted, so I could have used pop
-	// but I wanted to write & use clone instead.
-	return result;
-	// Returns something that should be freed later: yes.
-  // Returns something that doesn't share pointers with the input: yes.
+lispval* builtin_head(lispval* v)
+{
+    // printf("Entering builtin_head with v->count = %d and v->cell[0]->type = %d\n", v->count, v->cell[0]->type);
+    // head { 1 2 3 }
+    // But actually, that gets processd into head ({ 1 2 3 }), hence the v->cell[0]->cell[0];
+    LISPVAL_ASSERT(v->count == 1, "Error: function head passed too many arguments");
+    LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to head is not a q-expr, i.e., a bracketed list.");
+    LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to head is {}");
+    // printf("Passed assertions, v->cell[0]->count = %d\n", v->cell[0]->count);
+    // print_lispval_parenthesis(v);
+    // print_lispval_parenthesis(v->cell[0]);
+    lispval* result = clone_lispval(v->cell[0]->cell[0]);
+    // printf("Cloned lispval, result->type = %d\n", result->type);
+    // lispval* result = pop_lispval(v->cell[0], 0);
+    // ^ also possible
+    // A bit unclear. Pop seems like it would depend on the size of the array. clone depends on the sie of head.
+    // either way the original array will soon be deleted, so I could have used pop
+    // but I wanted to write & use clone instead.
+    return result;
+    // Returns something that should be freed later: yes.
+    // Returns something that doesn't share pointers with the input: yes.
 }
 
 lispval* builtin_tail(lispval* v)
 {
-	// tail { 1 2 3 }
-	LISPVAL_ASSERT(v->count ==1, "Error: function tail passed too many arguments");
-	
-	lispval* old = v->cell[0];
-	LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to tail is not a q-expr, i.e., a bracketed list.");
-  LISPVAL_ASSERT(old->count != 0, "Error: Argument passed to tail is {}");
-	
-	// lispval* head = pop_lispval(v->cell[0], 0);
-  // print_lispval_parenthesis(v);
-  // print_lispval_parenthesis(old);
-	lispval* new = lispval_qexpr();
-	if(old->count == 1){ 
-		return new; 
-  } else if (old->count > 1 && old->type == LISPVAL_QEXPR) {
-		for(int i=1; i<(old->count); i++){
-			// lispval_append_child(new, clone_lispval(old->cell[i]));
-			lispval_append_child(new, old->cell[i]);
-		} 
-		return clone_lispval(new);
-	} else {
-		return lispval_err("Error: Unreachable point reached in tail function");
-	}
-	
-	// Returns something that should be freed later: yes.
-  // Returns something that doesn't share pointers with the input: yes.
+    // tail { 1 2 3 }
+    LISPVAL_ASSERT(v->count == 1, "Error: function tail passed too many arguments");
+
+    lispval* old = v->cell[0];
+    LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to tail is not a q-expr, i.e., a bracketed list.");
+    LISPVAL_ASSERT(old->count != 0, "Error: Argument passed to tail is {}");
+
+    // lispval* head = pop_lispval(v->cell[0], 0);
+    // print_lispval_parenthesis(v);
+    // print_lispval_parenthesis(old);
+    lispval* new = lispval_qexpr();
+    if (old->count == 1) {
+        return new;
+    } else if (old->count > 1 && old->type == LISPVAL_QEXPR) {
+        for (int i = 1; i < (old->count); i++) {
+            // lispval_append_child(new, clone_lispval(old->cell[i]));
+            lispval_append_child(new, old->cell[i]);
+        }
+        return clone_lispval(new);
+    } else {
+        return lispval_err("Error: Unreachable point reached in tail function");
+    }
+
+    // Returns something that should be freed later: yes.
+    // Returns something that doesn't share pointers with the input: yes.
 }
 
-lispval* builtin_list(lispval* v){
-  // list ( 1 2 3 )
-	LISPVAL_ASSERT(v->count ==1, "Error: function list passed too many arguments");
-  lispval* old = v->cell[0];
-	LISPVAL_ASSERT(old->type == LISPVAL_SEXPR, "Error: Argument passed to list is not an s-expr, i.e., a list with parenthesis.");
-  lispval* new = clone_lispval(old);
-  new->type=LISPVAL_QEXPR;
-	return new;
-	// Returns something that should be freed later: yes.
-  // Returns something that is independent of the input: yes.
+lispval* builtin_list(lispval* v)
+{
+    // list ( 1 2 3 )
+    LISPVAL_ASSERT(v->count == 1, "Error: function list passed too many arguments");
+    lispval* old = v->cell[0];
+    LISPVAL_ASSERT(old->type == LISPVAL_SEXPR, "Error: Argument passed to list is not an s-expr, i.e., a list with parenthesis.");
+    lispval* new = clone_lispval(old);
+    new->type = LISPVAL_QEXPR;
+    return new;
+    // Returns something that should be freed later: yes.
+    // Returns something that is independent of the input: yes.
 }
 
 lispval* evaluate_lispval(lispval* l);
-lispval* builtin_eval(lispval* v){
-  // eval { + 1 2 3 }
-	// not sure how this will end up working, but we'll see
-	LISPVAL_ASSERT(v->count ==1, "Error: function eval passed too many arguments");
-  lispval* old = v->cell[0];
-  LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
-  lispval* new = clone_lispval(old);
-  new->type=LISPVAL_SEXPR;
-	return evaluate_lispval(new);
-	// Returns something that should be freed later: probably.
-  // Returns something that is independent of the input: depends on the output of evaluate_lispval.
+lispval* builtin_eval(lispval* v)
+{
+    // eval { + 1 2 3 }
+    // not sure how this will end up working, but we'll see
+    LISPVAL_ASSERT(v->count == 1, "Error: function eval passed too many arguments");
+    lispval* old = v->cell[0];
+    LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
+    lispval* temp = clone_lispval(old);
+    temp->type = LISPVAL_SEXPR;
+    lispval* answer = evaluate_lispval(temp);
+    delete_lispval(temp);
+    return answer;
+    // Returns something that should be freed later: probably.
+    // Returns something that is independent of the input: depends on the output of evaluate_lispval.
 }
 
-lispval* builtin_join(lispval* l){
-	// return lispval_err("Error: Join not ready yet.");
-	// join { {1 2} {3 4} }
-	print_lispval_parenthesis(l);
-	LISPVAL_ASSERT(l->count ==1, "Error: function join passed too many arguments");
-  lispval* old = l->cell[0];
-  LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: function join not passed q-expression");
-	lispval* result = lispval_qexpr();
-	for(int i=0; i<old->count; i++){
-		lispval* temp = old->cell[i];
-		LISPVAL_ASSERT(temp->type == LISPVAL_QEXPR, "Error: function join not passed a q expression with other q-expressions");
+lispval* builtin_join(lispval* l)
+{
+    // return lispval_err("Error: Join not ready yet.");
+    // join { {1 2} {3 4} }
+    print_lispval_parenthesis(l);
+    LISPVAL_ASSERT(l->count == 1, "Error: function join passed too many arguments");
+    lispval* old = l->cell[0];
+    LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: function join not passed q-expression");
+    lispval* result = lispval_qexpr();
+    for (int i = 0; i < old->count; i++) {
+        lispval* temp = old->cell[i];
+        LISPVAL_ASSERT(temp->type == LISPVAL_QEXPR, "Error: function join not passed a q expression with other q-expressions");
 
-		for(int j=0; j<temp->count; j++){
-			lispval_append_child(result, temp->cell[j]);
-		}
-	}
-	return result;
-	// Returns something that should be freed later: yes.
-  // Returns something that is independent of the input: yes.
+        for (int j = 0; j < temp->count; j++) {
+            lispval_append_child(result, temp->cell[j]);
+        }
+    }
+    return result;
+    // Returns something that should be freed later: yes.
+    // Returns something that is independent of the input: yes.
 }
 
 // Simple math ops
@@ -455,10 +496,10 @@ lispval* builtin_math_ops(char* op, lispval* v)
             return lispval_err("Error: Non minus unary operation");
         }
     } else if (v->count >= 2) {
-        lispval* x = clone_lispval(v->cell[0]);// pop_lispval(v, 0);
-				
-				for(int i=1;i<v->count; i++){
-						lispval* y = v->cell[i];
+        lispval* x = clone_lispval(v->cell[0]); // pop_lispval(v, 0);
+
+        for (int i = 1; i < v->count; i++) {
+            lispval* y = v->cell[i];
             if (strcmp(op, "+") == 0) {
                 x->num += y->num;
             }
@@ -477,36 +518,43 @@ lispval* builtin_math_ops(char* op, lispval* v)
                 }
                 x->num /= y->num;
             }
-				}
+        }
         return x;
     } else {
         return lispval_err("Error: Incorrect number of args. Perhaps a lispval->count was wrongly initialized?");
     }
-	// Returns something that should be freed later: yes.
-  // Returns something that is independent of the input: yes.
+    // Returns something that should be freed later: yes.
+    // Returns something that is independent of the input: yes.
 }
 
 // Aggregate both math and operations over lists
 lispval* builtin_functions(char* func, lispval* v)
 {
-  if (strcmp("list", func) == 0) { return builtin_list(v); }
-  else if (strcmp("head", func) == 0) { return builtin_head(v); }
-  else if (strcmp("tail", func) == 0) { return builtin_tail(v); }
-  else if (strcmp("join", func) == 0) { return builtin_join(v); }
-  else if (strcmp("eval", func) == 0) { return builtin_eval(v); }
-  else if (strstr("+-/*", func)) { return builtin_math_ops(func, v); 
-  } else {
-		return lispval_err("Unknown function");
-	}
-	// Returns something that should be freed later: depends on eval
-  // Returns something that is independent of the input: depends on eval
+    if (strcmp("list", func) == 0) {
+        return builtin_list(v);
+    } else if (strcmp("head", func) == 0) {
+        return builtin_head(v);
+    } else if (strcmp("tail", func) == 0) {
+        return builtin_tail(v);
+    } else if (strcmp("join", func) == 0) {
+        return builtin_join(v);
+    } else if (strcmp("eval", func) == 0) {
+        return builtin_eval(v);
+    } else if (strstr("+-/*", func)) {
+        return builtin_math_ops(func, v);
+    } else {
+        return lispval_err("Unknown function");
+    }
+    // Returns something that should be freed later: depends on eval
+    // Returns something that is independent of the input: depends on eval
 }
 
 // Evaluate the lispval
 lispval* evaluate_lispval(lispval* l)
 {
-		// Check if this is an s-expression
-		if(l->type != LISPVAL_SEXPR) return l;
+    // Check if this is an s-expression
+    if (l->type != LISPVAL_SEXPR)
+        return l;
     // Evaluate the children if needed
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_SEXPR) {
@@ -522,16 +570,20 @@ lispval* evaluate_lispval(lispval* l)
 
     // Check if the first element is an operation.
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_SYM)) {
-        // lispval* op = pop_lispval(l, 0);
-				lispval* operation = clone_lispval(l->cell[0]);
-				lispval* operands = lispval_sexpr();
-				for(int i=1; i<l->count; i++){
-					lispval_append_child(operands, l->cell[i]);
-				}
-        lispval* result = builtin_functions(operation->sym, operands);
+        lispval* temp = clone_lispval(l->cell[0]);
+        lispval* operation = pop_lispval(l, 0);
+        lispval* operands = temp;
+        // lispval* operation = clone_lispval(l->cell[0]);
+        // lispval* operands = lispval_sexpr();
+        // for (int i = 1; i < l->count; i++) {
+        //    lispval_append_child(operands, l->cell[i]);
+        // }
+        lispval* answer = builtin_functions(operation->sym, l);
         delete_lispval(operation);
         delete_lispval(operands);
-        return result;
+        // delete_lispval(operation);
+        // delete_lispval(operands); // < wrong!  they still remain in the list.
+        return answer;
     }
     return l;
 }
@@ -540,7 +592,7 @@ int main(int argc, char** argv)
 {
     // Info
     puts("Mumble version 0.0.2\n");
-    puts("Press Ctrl+C/Ctrl+D to exit\n");
+    puts("Press Ctrl+C to exit\n");
 
     /* Create Some Parsers */
     mpc_parser_t* Number = mpc_new("number");
@@ -595,14 +647,14 @@ int main(int argc, char** argv)
                     printf("\nParenthesis printing: ");
                     print_lispval_parenthesis(l);
                 }
-                lispval* result = evaluate_lispval(l);
+                lispval* answer = evaluate_lispval(l);
                 {
                     printf("\n\nResult: ");
-                    print_lispval_parenthesis(result);
+                    print_lispval_parenthesis(answer);
                     printf("\n");
                 }
                 delete_lispval(l);
-								delete_lispval(result);
+                delete_lispval(answer);
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
@@ -613,6 +665,7 @@ int main(int argc, char** argv)
         }
         puts("");
         free(input);
+        input = NULL;
     }
 
     /* Undefine and Delete our Parsers */
