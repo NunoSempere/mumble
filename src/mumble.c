@@ -5,14 +5,19 @@
 #include <string.h>
 
 #include "mpc/mpc.h"
-#define VERBOSE 1
+#define VERBOSE 0
 #define LISPVAL_ASSERT(cond, err) \
     if (!(cond)) {                \
         return lispval_err(err);  \
     }
 #define printfln(...) do { \
-    printf ("\n@ %s (%d): ", __FILE__, __LINE__); \
-    printf (__VA_ARGS__); \
+    if(VERBOSE == 2) { \
+			printf ("\n@ %s (%d): ", __FILE__, __LINE__); \
+      printf (__VA_ARGS__); \
+		} else {\
+			printf("\n"); \
+      printf (__VA_ARGS__); \
+		} \
 } while (0)
 // Types
 
@@ -133,6 +138,7 @@ void delete_lispval(lispval* v)
     switch (v->type) {
     case LISPVAL_NUM:
         if(VERBOSE) printfln("Freeing num");
+        if(VERBOSE) printfln("Freed num");
         break;
     case LISPVAL_ERR:
         if(VERBOSE) printfln("Freeing err");
@@ -316,11 +322,11 @@ lispval* read_lispval(mpc_ast_t* t)
 // Print
 void print_lispval_tree(lispval* v, int indent_level)
 {
-    char* indent = "  ";/*malloc(sizeof(char) * (indent_level + 1)); 
+    char* indent = malloc(sizeof(char) * (indent_level + 1)); 
     for (int i = 0; i < indent_level; i++) {
         indent[i] = ' ';
     }
-    indent[indent_level] = '\0';*/
+    indent[indent_level] = '\0';
 
     switch (v->type) {
     case LISPVAL_NUM:
@@ -351,10 +357,10 @@ void print_lispval_tree(lispval* v, int indent_level)
         printfln("Error: unknown lispval type\n");
         // printfln("%s", v->sym);
     }
-		// printfln("Freeing indent");
-    // if (indent!=NULL) free(indent);
-		printfln("Freed indent");
-    // indent = NULL;
+		if(VERBOSE) printfln("Freeing indent");
+    if (indent!=NULL) free(indent);
+    indent = NULL;
+		if(VERBOSE) printfln("Freed indent");
 }
 
 void print_lispval_parenthesis(lispval* v)
@@ -679,7 +685,8 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         if (l->cell[i]->type == LISPVAL_SEXPR || l->cell[i]->type == LISPVAL_SYM) {
             // l->cell[i] = 
 						lispval* new = evaluate_lispval(l->cell[i], env);
-						delete_lispval(l->cell[i]);
+						// delete_lispval(l->cell[i]);
+						// ^ gave me a "double free" error.
 						l->cell[i] = new;
         }
     }
@@ -786,9 +793,9 @@ int main(int argc, char** argv)
                     print_lispval_tree(answer, 0);
 										printf("\n");
                 }
+								// ^ I do not understand how the memory in l is freed.
+                delete_lispval(answer);
                 // delete_lispval(l);
-               // delete_lispval(answer);
-
 								// Clean up environment
 								destroy_lispenv(env);
             } else {
