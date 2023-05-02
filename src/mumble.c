@@ -333,7 +333,7 @@ lispval* builtin_head(lispval* v){
 	// but I wanted to write & use clone instead.
 	return result;
 	// Returns something that should be freed later: yes.
-  // Returns something that is independent of the input: yes.
+  // Returns something that doesn't share pointers with the input: yes.
 }
 
 lispval* builtin_tail(lispval* v)
@@ -360,15 +360,19 @@ lispval* builtin_tail(lispval* v)
 	
 	return clone_lispval(new);
 	// Returns something that should be freed later: yes.
-  // Returns something that is independent of the input: yes.
+  // Returns something that doesn't share pointers with the input: yes.
 }
 
 lispval* builtin_list(lispval* v){
   // list ( 1 2 3 )
 	LISPVAL_ASSERT(v->count ==1, "Error: function list passed too many arguments");
-  LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to list is not a q-expr, i.e., a bracketed list.");
-  v->type=LISPVAL_QEXPR;
-	return v;
+  lispval* old = v->cell[0];
+	LISPVAL_ASSERT(old->type == LISPVAL_SEXPR, "Error: Argument passed to list is not an s-expr, i.e., a list with parenthesis.");
+  lispval* new = clone_lispval(old);
+  new->type=LISPVAL_QEXPR;
+	return new;
+	// Returns something that should be freed later: yes.
+  // Returns something that is independent of the input: yes.
 }
 
 lispval* evaluate_lispval(lispval* l);
