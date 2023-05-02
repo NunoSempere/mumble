@@ -406,9 +406,13 @@ lispval* builtin_eval(lispval* v){
   // eval { + 1 2 3 }
 	// not sure how this will end up working, but we'll see
 	LISPVAL_ASSERT(v->count ==1, "Error: function eval passed too many arguments");
-  LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
-  v->cell[0]->type=LISPVAL_SEXPR;
-	return evaluate_lispval(v->cell[0]);
+  lispval* old = v->cell[0];
+  LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
+  lispval* new = clone_lispval(old);
+  new->type=LISPVAL_SEXPR;
+	return evaluate_lispval(new);
+	// Returns something that should be freed later: probably.
+  // Returns something that is independent of the input: depends on the output of evaluate_lispval.
 }
 
 lispval* builtin_join(lispval* l){
@@ -428,6 +432,8 @@ lispval* builtin_join(lispval* l){
 		}
 	}
 	return result;
+	// Returns something that should be freed later: yes.
+  // Returns something that is independent of the input: yes.
 }
 
 // Simple math ops
@@ -449,12 +455,10 @@ lispval* builtin_math_ops(char* op, lispval* v)
             return lispval_err("Error: Non minus unary operation");
         }
     } else if (v->count >= 2) {
-        lispval* x = pop_lispval(v, 0);
-
-        while (v->count > 0) {
-            // Pop the next element
-            lispval* y = pop_lispval(v, 0);
-
+        lispval* x = clone_lispval(v->cell[0]);// pop_lispval(v, 0);
+				
+				for(int i=1;i<v->count; i++){
+						lispval* y = v->cell[i];
             if (strcmp(op, "+") == 0) {
                 x->num += y->num;
             }
@@ -473,13 +477,13 @@ lispval* builtin_math_ops(char* op, lispval* v)
                 }
                 x->num /= y->num;
             }
-
-            delete_lispval(y);
-        }
+				}
         return x;
     } else {
         return lispval_err("Error: Incorrect number of args. Perhaps a lispval->count was wrongly initialized?");
     }
+	// Returns something that should be freed later: yes.
+  // Returns something that is independent of the input: yes.
 }
 
 // Aggregate both math and operations over lists
@@ -494,6 +498,8 @@ lispval* builtin_functions(char* func, lispval* v)
   } else {
 		return lispval_err("Unknown function");
 	}
+	// Returns something that should be freed later: depends on eval
+  // Returns something that is independent of the input: depends on eval
 }
 
 // Evaluate the lispval
@@ -510,15 +516,21 @@ lispval* evaluate_lispval(lispval* l)
     // Check if any are errors.
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_ERR) {
-            return pop_lispval(l, i);
+            return clone_lispval(l->cell[i]);
         }
     }
 
     // Check if the first element is an operation.
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_SYM)) {
-        lispval* op = pop_lispval(l, 0);
-        lispval* result = builtin_functions(op->sym, l);
-        delete_lispval(op);
+        // lispval* op = pop_lispval(l, 0);
+				lispval* operation = clone_lispval(l->cell[0]);
+				lispval* operands = lispval_sexpr();
+				for(int i=1; i<l->count; i++){
+					lispval_append_child(operands, l->cell[i]);
+				}
+        lispval* result = builtin_functions(operation->sym, operands);
+        delete_lispval(operation);
+        delete_lispval(operands);
         return result;
     }
     return l;
@@ -590,7 +602,7 @@ int main(int argc, char** argv)
                     printf("\n");
                 }
                 delete_lispval(l);
-								// delete_lispval(result);
+								delete_lispval(result);
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
