@@ -451,7 +451,7 @@ lispval* builtin_join(lispval* l)
         LISPVAL_ASSERT(temp->type == LISPVAL_QEXPR, "Error: function join not passed a q expression with other q-expressions");
 
         for (int j = 0; j < temp->count; j++) {
-            lispval_append_child(result, temp->cell[j]);
+            lispval_append_child(result, clone_lispval(temp->cell[j]));
         }
     }
     return result;
