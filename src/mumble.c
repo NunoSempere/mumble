@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "mpc/mpc.h"
-#define VERBOSE 1
+#define VERBOSE 0
 #define LISPVAL_ASSERT(cond, err) \
 	if (!(cond)) { return lispval_err(err); }
 
@@ -116,6 +116,7 @@ lispval* read_lispval_num(mpc_ast_t* t)
     return errno != ERANGE ? lispval_num(x)
                            : lispval_err("Error: Invalid number.");
 }
+
 lispval* read_lispval(mpc_ast_t* t)
 {
 		// Non-ignorable children
@@ -151,20 +152,19 @@ lispval* read_lispval(mpc_ast_t* t)
         for (int i = 0; i < (t->children_num); i++) {
             if (strcmp(t->children[i]->contents, "(") == 0) {
                 continue;
-            }
-            if (strcmp(t->children[i]->contents, ")") == 0) {
+            } else if (strcmp(t->children[i]->contents, ")") == 0) {
+                continue;
+            } else if (strcmp(t->children[i]->contents, "{") == 0) {
                 continue;
             }
-            if (strcmp(t->children[i]->contents, "{") == 0) {
+            else if (strcmp(t->children[i]->contents, "}") == 0) {
                 continue;
             }
-            if (strcmp(t->children[i]->contents, "}") == 0) {
+            else if (strcmp(t->children[i]->tag, "regex") == 0) {
                 continue;
-            }
-            if (strcmp(t->children[i]->tag, "regex") == 0) {
-                continue;
-            }
-            x = lispval_append_child(x, read_lispval(t->children[i]));
+            } else {
+            x = lispval_append_child(x, read_lispval(t->children[i])); 
+						}
         }
         return x;
 		} else {
@@ -319,26 +319,48 @@ lispval* take_lispval(lispval* v, int i)
 // Operations
 // Ops for q-expressions
 lispval* builtin_head(lispval* v){
-	// head ( 1 2 3 )
+	// head { 1 2 3 }
+	// But actually, that gets processd into head ({ 1 2 3 }), hence the v->cell[0]->cell[0];
 	LISPVAL_ASSERT(v->count ==1, "Error: function head passed too many arguments");
 	LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to head is not a q-expr, i.e., a bracketed list.");
   LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to head is {}");
-	lispval* result = clone_lispval(v->cell[0]); 
+  // print_lispval_parenthesis(v);
+	lispval* result = clone_lispval(v->cell[0]->cell[0]); 
+	// lispval* result = pop_lispval(v->cell[0], 0); 
+  // ^ also possible
 	// A bit unclear. Pop seems like it would depend on the size of the array. clone depends on the sie of head.
 	// either way the original array will soon be deleted, so I could have used pop
 	// but I wanted to write & use clone instead.
 	return result;
+	// Returns something that should be freed later: yes.
+  // Returns something that is independent of the input: yes.
 }
 
 lispval* builtin_tail(lispval* v)
 {
-	// tail ( 1 2 3 )
+	// tail { 1 2 3 }
 	LISPVAL_ASSERT(v->count ==1, "Error: function tail passed too many arguments");
-	LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to tail is not a q-expr, i.e., a bracketed list.");
-  LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to tail is {}");
-	lispval* result = clone_lispval(v);
-	pop_lispval(result, 0);
-	return result;
+	
+	lispval* old = v->cell[0];
+	LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to tail is not a q-expr, i.e., a bracketed list.");
+  LISPVAL_ASSERT(old->count != 0, "Error: Argument passed to tail is {}");
+	
+	// lispval* head = pop_lispval(v->cell[0], 0);
+  // print_lispval_parenthesis(v);
+  // print_lispval_parenthesis(old);
+	lispval* new = lispval_qexpr();
+	if(old->count == 1){ 
+		return new; 
+  } else {
+		for(int i=1; i<(old->count); i++){
+			// lispval_append_child(new, clone_lispval(old->cell[i]));
+			lispval_append_child(new, old->cell[i]);
+		} 
+	}
+	
+	return clone_lispval(new);
+	// Returns something that should be freed later: yes.
+  // Returns something that is independent of the input: yes.
 }
 
 lispval* builtin_list(lispval* v){
@@ -360,6 +382,7 @@ lispval* builtin_eval(lispval* v){
 }
 
 lispval* builtin_join(lispval* l){
+	return lispval_err("Error: Join not ready yet.");
 	// join { {1 2} {3 4} }
   LISPVAL_ASSERT(l->type == LISPVAL_QEXPR, "Error: function join not passed q-expression");
 	lispval* result = lispval_qexpr();
@@ -375,7 +398,7 @@ lispval* builtin_join(lispval* l){
 }
 
 // Simple math ops
-lispval* builtin_simple_math_ops(char* op, lispval* v)
+lispval* builtin_math_ops(char* op, lispval* v)
 {
     // For now, ensure all args are numbers
     for (int i = 0; i < v->count; i++) {
@@ -432,9 +455,9 @@ lispval* builtin_functions(char* func, lispval* v)
   if (strcmp("list", func) == 0) { return builtin_list(v); }
   else if (strcmp("head", func) == 0) { return builtin_head(v); }
   else if (strcmp("tail", func) == 0) { return builtin_tail(v); }
-  else if (strcmp("join", func) == 0) { return builtin_join(v); }
+  // else if (strcmp("j", func) == 0) { return builtin_join(v); }
   else if (strcmp("eval", func) == 0) { return builtin_eval(v); }
-  else if (strstr("+-/*", func)) { return builtin_simple_math_ops(func, v); 
+  else if (strstr("+-/*", func)) { return builtin_math_ops(func, v); 
   } else {
 		return lispval_err("Unknown function");
 	}
@@ -459,7 +482,7 @@ lispval* evaluate_lispval(lispval* l)
     // Check if the first element is an operation.
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_SYM)) {
         lispval* op = pop_lispval(l, 0);
-        lispval* result = builtin_simple_math_ops(op->sym, l);
+        lispval* result = builtin_functions(op->sym, l);
         delete_lispval(op);
         return result;
     }
@@ -483,8 +506,8 @@ int main(int argc, char** argv)
     /* Define them with the following Language */
     mpca_lang(MPCA_LANG_DEFAULT, "                           \
     number   : /-?[0-9]+\\.?([0-9]+)?/ ;                     \
-    symbol : \"list\" | \"head\" | \"tail\" | \"eval\"       \
-		       | '+' | '-' | '*' | '/' ;                         \
+    symbol : \"list\" | \"head\" | \"tail\" | \"eval\" \
+           | '+' | '-' | '*' | '/' ;        \
 		sexpr : '(' <expr>* ')' ;                                \
 		qexpr : '{' <expr>* '}' ;                                \
     expr     : <number> | <symbol> | <sexpr> | <qexpr>;      \
