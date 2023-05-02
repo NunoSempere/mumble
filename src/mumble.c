@@ -116,12 +116,27 @@ lispval* read_lispval_num(mpc_ast_t* t)
 }
 lispval* read_lispval(mpc_ast_t* t)
 {
+		// Non-ignorable children
+		// Relevant for the edge-case of considering the case where you 
+		// only have one top level item.
+	  int c = 0;
+		int c_index = -1;
+		for(int i=0; i<t->children_num; i++){
+      mpc_ast_t* child = t->children[i];
+			if( ( strcmp(child->tag, "regex") != 0 ) || (strcmp(child->contents, "") != 0 ) || child->children_num != 0 ){
+				c++;
+				c_index = i;
+			}
+		}
+		if(VERBOSE) printf("\nNon ignorable children: %i", c);
+
     if (strstr(t->tag, "number")) {
         return read_lispval_num(t);
     } else if (strstr(t->tag, "symbol")) {
         return lispval_sym(t->contents);
+		} else if ((strcmp(t->tag, ">") == 0) && (c==1)) {
+			return read_lispval(t->children[c_index]);
     } else if ((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr") || strstr(t->tag, "qexpr")) {
-			  
         lispval* x;
 				if((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr")){
 					x = lispval_sexpr();
