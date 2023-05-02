@@ -316,9 +316,11 @@ lispval* take_lispval(lispval* v, int i)
     return x;
 }
 
+// Operations
 // Ops for q-expressions
-lispval* head(lispval* v){
-	LISPVAL_ASSERT(v->count ==1, "Error: Function head passed too many arguments");
+lispval* builtin_head(lispval* v){
+	// head ( 1 2 3 )
+	LISPVAL_ASSERT(v->count ==1, "Error: function head passed too many arguments");
 	LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to head is not a q-expr, i.e., a bracketed list.");
   LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to head is {}");
 	lispval* result = clone_lispval(v->cell[0]); 
@@ -328,8 +330,52 @@ lispval* head(lispval* v){
 	return result;
 }
 
-// Process an op
-lispval* builtin_op(char* op, lispval* v)
+lispval* builtin_tail(lispval* v)
+{
+	// tail ( 1 2 3 )
+	LISPVAL_ASSERT(v->count ==1, "Error: function tail passed too many arguments");
+	LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to tail is not a q-expr, i.e., a bracketed list.");
+  LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to tail is {}");
+	lispval* result = clone_lispval(v);
+	pop_lispval(result, 0);
+	return result;
+}
+
+lispval* builtin_list(lispval* v){
+  // list ( 1 2 3 )
+	LISPVAL_ASSERT(v->count ==1, "Error: function list passed too many arguments");
+  LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to list is not a q-expr, i.e., a bracketed list.");
+  v->type=LISPVAL_QEXPR;
+	return v;
+}
+
+lispval* evaluate_lispval(lispval* l);
+lispval* builtin_eval(lispval* v){
+  // eval { + 1 2 3 }
+	// not sure how this will end up working, but we'll see
+	LISPVAL_ASSERT(v->count ==1, "Error: function eval passed too many arguments");
+  LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
+  v->type=LISPVAL_SEXPR;
+	return evaluate_lispval(v);
+}
+
+lispval* builtin_join(lispval* l){
+	// join { {1 2} {3 4} }
+  LISPVAL_ASSERT(l->type == LISPVAL_QEXPR, "Error: function join not passed q-expression");
+	lispval* result = lispval_qexpr();
+	for(int i=0; i<l->count; i++){
+		lispval* temp = l->cell[i];
+		LISPVAL_ASSERT(temp->type == LISPVAL_QEXPR, "Error: function join not passed a q expression with other q-expressions");
+
+		for(int j=0; j<temp->count; j++){
+			lispval_append_child(result, temp->cell[j]);
+		}
+	}
+	return result;
+}
+
+// Simple math ops
+lispval* builtin_simple_math_ops(char* op, lispval* v)
 {
     // For now, ensure all args are numbers
     for (int i = 0; i < v->count; i++) {
@@ -380,6 +426,20 @@ lispval* builtin_op(char* op, lispval* v)
     }
 }
 
+// Aggregate both math and operations over lists
+lispval* builtin_functions(char* func, lispval* v)
+{
+  if (strcmp("list", func) == 0) { return builtin_list(v); }
+  else if (strcmp("head", func) == 0) { return builtin_head(v); }
+  else if (strcmp("tail", func) == 0) { return builtin_tail(v); }
+  else if (strcmp("join", func) == 0) { return builtin_join(v); }
+  else if (strcmp("eval", func) == 0) { return builtin_eval(v); }
+  else if (strstr("+-/*", func)) { return builtin_simple_math_ops(func, v); 
+  } else {
+		return lispval_err("Unknown function");
+	}
+}
+
 // Evaluate the lispval
 lispval* evaluate_lispval(lispval* l)
 {
@@ -399,7 +459,7 @@ lispval* evaluate_lispval(lispval* l)
     // Check if the first element is an operation.
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_SYM)) {
         lispval* op = pop_lispval(l, 0);
-        lispval* result = builtin_op(op->sym, l);
+        lispval* result = builtin_functions(op->sym, l);
         delete_lispval(op);
         return result;
     }
