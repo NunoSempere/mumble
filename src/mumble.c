@@ -412,12 +412,15 @@ lispval* builtin_eval(lispval* v){
 }
 
 lispval* builtin_join(lispval* l){
-	return lispval_err("Error: Join not ready yet.");
+	// return lispval_err("Error: Join not ready yet.");
 	// join { {1 2} {3 4} }
-  LISPVAL_ASSERT(l->type == LISPVAL_QEXPR, "Error: function join not passed q-expression");
+	print_lispval_parenthesis(l);
+	LISPVAL_ASSERT(l->count ==1, "Error: function join passed too many arguments");
+  lispval* old = l->cell[0];
+  LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: function join not passed q-expression");
 	lispval* result = lispval_qexpr();
-	for(int i=0; i<l->count; i++){
-		lispval* temp = l->cell[i];
+	for(int i=0; i<old->count; i++){
+		lispval* temp = old->cell[i];
 		LISPVAL_ASSERT(temp->type == LISPVAL_QEXPR, "Error: function join not passed a q expression with other q-expressions");
 
 		for(int j=0; j<temp->count; j++){
@@ -485,7 +488,7 @@ lispval* builtin_functions(char* func, lispval* v)
   if (strcmp("list", func) == 0) { return builtin_list(v); }
   else if (strcmp("head", func) == 0) { return builtin_head(v); }
   else if (strcmp("tail", func) == 0) { return builtin_tail(v); }
-  // else if (strcmp("j", func) == 0) { return builtin_join(v); }
+  else if (strcmp("join", func) == 0) { return builtin_join(v); }
   else if (strcmp("eval", func) == 0) { return builtin_eval(v); }
   else if (strstr("+-/*", func)) { return builtin_math_ops(func, v); 
   } else {
@@ -538,7 +541,8 @@ int main(int argc, char** argv)
     /* Define them with the following Language */
     mpca_lang(MPCA_LANG_DEFAULT, "                           \
     number   : /-?[0-9]+\\.?([0-9]+)?/ ;                     \
-    symbol : \"list\" | \"head\" | \"tail\" | \"eval\" \
+    symbol : \"list\" | \"head\" | \"tail\"  \
+		       | \"eval\" | \"join\"   \
            | '+' | '-' | '*' | '/' ;        \
 		sexpr : '(' <expr>* ')' ;                                \
 		qexpr : '{' <expr>* '}' ;                                \
