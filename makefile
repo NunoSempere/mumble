@@ -6,8 +6,8 @@
 # make uninstall
 
 ## C compiler
-CC=tcc # much faster compilation than gcc
-COMPILER_FLAGS=#-g3 -Wall -Wextra -Wconversion -Wdouble-promotion -Wno-unused-parameter -Wno-unused-function -Wno-sign-conversion -fsanitize=undefined 
+CC=gcc # much faster compilation than gcc
+COMPILER_FLAGS=-g3 -Wall -Wextra -Wconversion -Wdouble-promotion -Wno-unused-parameter -Wno-unused-function -Wno-sign-conversion -fsanitize=undefined 
 # exclude: -fsanitize-trap, because I'm using an old version of gcc and couldn't bother getting a new one.
 ## ^ from <https://nullprogram.com/blog/2023/04/29/>
 ## <https://news.ycombinator.com/item?id=35758898>

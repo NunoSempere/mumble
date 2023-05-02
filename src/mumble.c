@@ -5,12 +5,15 @@
 #include <string.h>
 
 #include "mpc/mpc.h"
-#define VERBOSE 0
+#define VERBOSE 1
 #define LISPVAL_ASSERT(cond, err) \
     if (!(cond)) {                \
         return lispval_err(err);  \
     }
-
+#define printfln(...) do { \
+    printf ("\n@ %s (%d): ", __FILE__, __LINE__); \
+    printf (__VA_ARGS__); \
+} while (0)
 // Types
 
 // Types: Forward declarations
@@ -60,7 +63,7 @@ enum {
 // Constructors
 lispval* lispval_num(double x)
 {
-    if(VERBOSE) printf("\nAllocated num");
+    if(VERBOSE) printfln("Allocated num");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_NUM;
     v->count = 0;
@@ -70,7 +73,7 @@ lispval* lispval_num(double x)
 
 lispval* lispval_err(char* message)
 {
-    if(VERBOSE) printf("\nAllocated err");
+    if(VERBOSE) printfln("Allocated err");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_ERR;
     v->count = 0;
@@ -81,7 +84,7 @@ lispval* lispval_err(char* message)
 
 lispval* lispval_sym(char* symbol)
 {
-    if(VERBOSE) printf("\nAllocated sym");
+    if(VERBOSE) printfln("Allocated sym");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_SYM;
     v->count = 0;
@@ -91,7 +94,7 @@ lispval* lispval_sym(char* symbol)
 }
 
 lispval* lispval_func(lispbuiltin func, char* funcname){
-    if(VERBOSE) printf("\nAllocated sym");
+    if(VERBOSE) printfln("Allocated sym");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_FUNC;
     v->count = 0;
@@ -103,7 +106,7 @@ lispval* lispval_func(lispbuiltin func, char* funcname){
 
 lispval* lispval_sexpr(void)
 {
-    if(VERBOSE) printf("\nAllocated sexpr");
+    if(VERBOSE) printfln("Allocated sexpr");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_SEXPR;
     v->count = 0;
@@ -113,7 +116,7 @@ lispval* lispval_sexpr(void)
 
 lispval* lispval_qexpr(void)
 {
-    if(VERBOSE) printf("\nAllocated qexpr");
+    if(VERBOSE) printfln("Allocated qexpr");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_QEXPR;
     v->count = 0;
@@ -122,37 +125,42 @@ lispval* lispval_qexpr(void)
 }
 
 // Destructor
+void print_lispval_tree(lispval* v, int indent_level);
 void delete_lispval(lispval* v)
 {
 	  if(v == NULL) return;
+		// print_lispval_tree(v, 0);
     switch (v->type) {
     case LISPVAL_NUM:
-        if(VERBOSE) printf("\nFreed num");
+        if(VERBOSE) printfln("Freeing num");
         break;
     case LISPVAL_ERR:
-        if(VERBOSE) printf("\nFreed err");
+        if(VERBOSE) printfln("Freeing err");
         if (v->err != NULL)
             free(v->err);
         v->err = NULL;
+        if(VERBOSE) printfln("Freed err");
         break;
     case LISPVAL_SYM:
-        if(VERBOSE) printf("\nFreed sym");
+        if(VERBOSE) printfln("Freeing sym");
         if (v->sym != NULL)
             free(v->sym);
         v->sym = NULL;
+        if(VERBOSE) printfln("Freed sym");
         break;
 		case LISPVAL_FUNC:
-        if(VERBOSE) printf("\nFreed func");
+        if(VERBOSE) printfln("Freeing func");
         if (v->funcname != NULL)
             free(v->funcname);
         v->funcname = NULL;
+        if(VERBOSE) printfln("Freed func");
 				// Don't do anything with v->func for now
 				// Though we could delete the pointer to the function later
 				// free(v->func);
 				break;
     case LISPVAL_SEXPR:
     case LISPVAL_QEXPR:
-        if(VERBOSE) printf("\nFreed s/qexpr");
+        if(VERBOSE) printfln("Freeing sexpr|qexpr");
         for (int i = 0; i < v->count; i++) {
             if (v->cell[i] != NULL)
                 delete_lispval(v->cell[i]);
@@ -161,7 +169,10 @@ void delete_lispval(lispval* v)
         if (v->cell != NULL)
             free(v->cell);
         v->cell = NULL;
+        if(VERBOSE) printfln("Freed sexpr|qexpr");
         break;
+		default: 
+        if(VERBOSE) printfln("Error: Unknown expression type.");
     }
     if (v != NULL)
         free(v);
@@ -262,7 +273,7 @@ lispval* read_lispval(mpc_ast_t* t)
         }
     }
     if (VERBOSE)
-        printf("\nNon ignorable children: %i", c);
+        printfln("Non ignorable children: %i", c);
 
     if (strstr(t->tag, "number")) {
         return read_lispval_num(t);
@@ -305,74 +316,79 @@ lispval* read_lispval(mpc_ast_t* t)
 // Print
 void print_lispval_tree(lispval* v, int indent_level)
 {
-    char* indent = malloc(sizeof(char) * (indent_level + 1)); 
+    char* indent = "  ";/*malloc(sizeof(char) * (indent_level + 1)); 
     for (int i = 0; i < indent_level; i++) {
         indent[i] = ' ';
     }
-    indent[indent_level] = '\0';
+    indent[indent_level] = '\0';*/
 
     switch (v->type) {
     case LISPVAL_NUM:
-        printf("\n%sNumber: %f", indent, v->num);
+        printfln("%sNumber: %f", indent, v->num);
         break;
     case LISPVAL_ERR:
-        printf("\n%sError: %s", indent, v->err);
+        printfln("%sError: %s", indent, v->err);
         break;
     case LISPVAL_SYM:
-        printf("\n%sSymbol: %s", indent, v->sym);
+        printfln("%sSymbol: %s", indent, v->sym);
+        break;
+    case LISPVAL_FUNC:
+        printfln("%sFunction, name: %s, pointer: %p", indent, v->funcname, v->func);
         break;
     case LISPVAL_SEXPR:
-        printf("\n%sSExpr, with %d children:", indent, v->count);
+        printfln("%sSExpr, with %d children:", indent, v->count);
         for (int i = 0; i < v->count; i++) {
             print_lispval_tree(v->cell[i], indent_level + 2);
         }
         break;
     case LISPVAL_QEXPR:
-        printf("\n%sQExpr, with %d children:", indent, v->count);
+        printfln("%sQExpr, with %d children:", indent, v->count);
         for (int i = 0; i < v->count; i++) {
             print_lispval_tree(v->cell[i], indent_level + 2);
         }
         break;
     default:
-        printf("Error: unknown lispval type\n");
-        printf("%s", v->sym);
+        printfln("Error: unknown lispval type\n");
+        // printfln("%s", v->sym);
     }
-    free(indent);
-    indent = NULL;
+		// printfln("Freeing indent");
+    // if (indent!=NULL) free(indent);
+		printfln("Freed indent");
+    // indent = NULL;
 }
 
 void print_lispval_parenthesis(lispval* v)
 {
     switch (v->type) {
     case LISPVAL_NUM:
-        printf("%f ", v->num);
+        printfln("%f ", v->num);
         break;
     case LISPVAL_ERR:
-        printf("%s ", v->err);
+        printfln("%s ", v->err);
         break;
     case LISPVAL_SYM:
-        printf("%s ", v->sym);
+        printfln("%s ", v->sym);
         break;
     case LISPVAL_FUNC:
-        printf("<function name: %s pointer: %p>", v->funcname, v->func);
+        printfln("<function name: %s pointer: %p>", v->funcname, v->func);
         break;
     case LISPVAL_SEXPR:
-        printf("( ");
+        printfln("( ");
         for (int i = 0; i < v->count; i++) {
             print_lispval_parenthesis(v->cell[i]);
         }
-        printf(") ");
+        printfln(") ");
         break;
     case LISPVAL_QEXPR:
-        printf("{ ");
+        printfln("{ ");
         for (int i = 0; i < v->count; i++) {
             print_lispval_parenthesis(v->cell[i]);
         }
-        printf("} ");
+        printfln("} ");
         break;
     default:
-        printf("Error: unknown lispval type\n");
-        printf("%s", v->sym);
+        printfln("Error: unknown lispval type\n");
+        // printfln("%s", v->sym);
     }
 }
 
@@ -383,14 +399,14 @@ void print_ast(mpc_ast_t* ast, int indent_level)
         indent[i] = ' ';
     }
     indent[indent_level] = '\0';
-    printf("\n%sTag: %s", indent, ast->tag);
-    printf("\n%sContents: %s", indent,
+    printfln("%sTag: %s", indent, ast->tag);
+    printfln("%sContents: %s", indent,
         strcmp(ast->contents, "") ? ast->contents : "None");
-    printf("\n%sNumber of children: %i", indent, ast->children_num);
+    printfln("%sNumber of children: %i", indent, ast->children_num);
     /* Print the children */
     for (int i = 0; i < ast->children_num; i++) {
         mpc_ast_t* child_i = ast->children[i];
-        printf("\n%sChild #%d", indent, i);
+        printfln("%sChild #%d", indent, i);
         print_ast(child_i, indent_level + 2);
     }
     free(indent);
@@ -462,7 +478,7 @@ lispval* take_lispval(lispval* v, int i)
 // Ops for q-expressions
 lispval* builtin_head(lispval* v)
 {
-    // printf("Entering builtin_head with v->count = %d and v->cell[0]->type = %d\n", v->count, v->cell[0]->type);
+    // printfln("Entering builtin_head with v->count = %d and v->cell[0]->type = %d\n", v->count, v->cell[0]->type);
     // head { 1 2 3 }
     // But actually, that gets processd into head ({ 1 2 3 }), hence the v->cell[0]->cell[0];
     LISPVAL_ASSERT(v->count == 1, "Error: function head passed too many arguments");
@@ -745,18 +761,18 @@ int main(int argc, char** argv)
 
                 // Print AST if VERBOSE
                 if (VERBOSE) {
-                    printf("\nPrinting AST");
+                    printfln("Printing AST");
                     print_ast(ast, 0);
                 }
                 // Evaluate the AST
-                if(VERBOSE) printf("\n\nEvaluating the AST");
+                if(VERBOSE) printfln("\nEvaluating the AST");
                 // lispval result = evaluate_ast(ast);
                 lispval* l = read_lispval(ast);
                 if (VERBOSE) {
-                    printf("\n\nPrinting initially parsed lispvalue");
-                    printf("\nTree printing: ");
+                    printfln("\nPrinting initially parsed lispvalue");
+                    printfln("Tree printing: ");
                     print_lispval_tree(l, 2);
-                    printf("\nParenthesis printing: ");
+                    printfln("Parenthesis printing: ");
                     print_lispval_parenthesis(l);
                 }
 								// Create an environment
@@ -765,12 +781,13 @@ int main(int argc, char** argv)
 								// Eval the lispval in that environment.
                 lispval* answer = evaluate_lispval(l, env);
                 {
-                    printf("\n\nResult: ");
+                    printfln("Result: ");
                     print_lispval_parenthesis(answer);
-                    printf("\n");
+                    print_lispval_tree(answer, 0);
+										printf("\n");
                 }
-                delete_lispval(l);
-                delete_lispval(answer);
+                // delete_lispval(l);
+               // delete_lispval(answer);
 
 								// Clean up environment
 								destroy_lispenv(env);
