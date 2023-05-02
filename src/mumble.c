@@ -6,6 +6,8 @@
 
 #include "mpc/mpc.h"
 #define VERBOSE 1
+#define LISPVAL_ASSERT(cond, err) \
+	if (!(cond)) { return lispval_err(err); }
 
 // Types
 typedef struct lispval {
@@ -261,7 +263,37 @@ void print_ast(mpc_ast_t* ast, int indent_level)
     free(indent);
 }
 
-// Evaluate the lispval
+// Lispval helpers
+lispval* clone_lispval(lispval* old)
+{
+	  lispval* new;
+		
+	  switch(old->type){
+    case LISPVAL_NUM:
+			  new = lispval_num(old->num);
+        break;
+    case LISPVAL_ERR:
+        new = lispval_err(old->err);
+        break;
+    case LISPVAL_SYM:
+        new = lispval_sym(old->sym);
+        break;
+    case LISPVAL_SEXPR:
+				new = lispval_sexpr();
+				break; 
+    case LISPVAL_QEXPR:
+				new = lispval_qexpr();
+        break;
+		}
+		
+		for (int i = 0; i < old->count; i++) {
+			  lispval* temp_child = old->cell[i];
+				lispval* child = clone_lispval(temp_child);
+				lispval_append_child(new, child);
+		}
+    return new;
+}
+
 lispval* pop_lispval(lispval* v, int i)
 {
     lispval* r = v->cell[i];
@@ -284,6 +316,19 @@ lispval* take_lispval(lispval* v, int i)
     return x;
 }
 
+// Ops for q-expressions
+lispval* head(lispval* v){
+	LISPVAL_ASSERT(v->count ==1, "Error: Function head passed too many arguments");
+	LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to head is not a q-expr, i.e., a bracketed list.");
+  LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to head is {}");
+	lispval* result = clone_lispval(v->cell[0]); 
+	// A bit unclear. Pop seems like it would depend on the size of the array. clone depends on the sie of head.
+	// either way the original array will soon be deleted, so I could have used pop
+	// but I wanted to write & use clone instead.
+	return result;
+}
+
+// Process an op
 lispval* builtin_op(char* op, lispval* v)
 {
     // For now, ensure all args are numbers
@@ -335,6 +380,7 @@ lispval* builtin_op(char* op, lispval* v)
     }
 }
 
+// Evaluate the lispval
 lispval* evaluate_lispval(lispval* l)
 {
     // Evaluate the children if needed
