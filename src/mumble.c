@@ -334,7 +334,7 @@ void print_lispval_tree(lispval* v, int indent_level)
         printfln("%sNumber: %f", indent, v->num);
         break;
     case LISPVAL_ERR:
-        printfln("%sError: %s", indent, v->err);
+        printfln("%s%s", indent, v->err);
         break;
     case LISPVAL_SYM:
         printfln("%sSymbol: %s", indent, v->sym);
@@ -377,7 +377,7 @@ void print_lispval_parenthesis(lispval* v)
         printf("%s ", v->sym);
         break;
     case LISPVAL_FUNC:
-        printf("<function name: %s, pointer: %p> ", v->funcname, v->func);
+        printf("<function, name: %s, pointer: %p> ", v->funcname, v->func);
         break;
     case LISPVAL_SEXPR:
         printf("( ");
@@ -562,10 +562,14 @@ lispval* builtin_eval(lispval* v, lispenv* env)
     // not sure how this will end up working, but we'll see
     LISPVAL_ASSERT(v->count == 1, "Error: function eval passed too many arguments");
     lispval* old = v->cell[0];
-    LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
+    LISPVAL_ASSERT(old->type == LISPVAL_QEXPR || old->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
     lispval* temp = clone_lispval(old);
     temp->type = LISPVAL_SEXPR;
     lispval* answer = evaluate_lispval(temp, env);
+    answer = evaluate_lispval(answer, env);
+		// ^ needed to make this example work:
+		//  (eval {head {+ -}}) 1 2 3 
+		//  though I'm not sure why
     delete_lispval(temp);
     return answer;
     // Returns something that should be freed later: probably.
