@@ -5,11 +5,11 @@
 #include <string.h>
 
 #include "mpc/mpc.h"
-#define VERBOSE 2
 #define LISPVAL_ASSERT(cond, err) \
     if (!(cond)) {                \
         return lispval_err(err);  \
     }
+int VERBOSE = 0;
 #define printfln(...) do { \
     if(VERBOSE == 2) { \
 			printf ("\n@ %s (%d): ", __FILE__, __LINE__); \
@@ -790,6 +790,20 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
     }
     return l;
 }
+// Increase or decrease verbosity level manually
+void modify_verbosity(char* command){
+	if(strcmp("VERBOSE=0", command) == 0){ 
+		VERBOSE=0;
+	}
+	if(strcmp("VERBOSE=1", command) == 0){ 
+		VERBOSE=1;
+		printfln("VERBOSE=1");
+	}
+	if(strcmp("VERBOSE=2", command) == 0){ 
+		VERBOSE=2;
+	}
+}
+
 // Main
 int main(int argc, char** argv)
 {
@@ -831,6 +845,7 @@ int main(int argc, char** argv)
 	int loop = 1;
 	while (loop) {
 			char* input = readline("mumble> ");
+			modify_verbosity(input);
 			if (input == NULL) {
 					// ^ catches Ctrl+D
 					loop = 0;
