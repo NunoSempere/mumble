@@ -1,0 +1,4 @@
+- [ ] Add ability to enter commands directly from command line   $ ./mumble (+ 1 2)
+- [ ] Add a bunch of automatic tests using ^
+- [ ] Add some documentation
+- [ ] Post this on Github
