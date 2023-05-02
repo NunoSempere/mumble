@@ -314,7 +314,7 @@ lispval* clone_lispval(lispval* old)
 
 lispval* pop_lispval(lispval* v, int i)
 {
-	  LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function head passed too many arguments");
+	  LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function pop passed too many arguments");
     lispval* r = v->cell[i];
     /* Shift memory after the item at "i" over the top */
     memmove(&v->cell[i], &v->cell[i + 1],
@@ -330,7 +330,7 @@ lispval* pop_lispval(lispval* v, int i)
 
 lispval* take_lispval(lispval* v, int i)
 { // Unneeded.
-	  LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function head passed too many arguments");
+	  LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function take_lispval passed too many arguments");
     lispval* x = pop_lispval(v, i);
     delete_lispval(v);
     return x;
@@ -348,7 +348,7 @@ lispval* builtin_head(lispval* v){
   // printf("Passed assertions, v->cell[0]->count = %d\n", v->cell[0]->count);
   // print_lispval_parenthesis(v);
 	// print_lispval_parenthesis(v->cell[0]);
-	lispval* result = clone_lispval(v->cell[0]); 
+	lispval* result = clone_lispval(v->cell[0]->cell[0]); 
   // printf("Cloned lispval, result->type = %d\n", result->type);
 	// lispval* result = pop_lispval(v->cell[0], 0); 
   // ^ also possible
@@ -375,14 +375,16 @@ lispval* builtin_tail(lispval* v)
 	lispval* new = lispval_qexpr();
 	if(old->count == 1){ 
 		return new; 
-  } else {
+  } else if (old->count > 1 && old->type == LISPVAL_QEXPR) {
 		for(int i=1; i<(old->count); i++){
 			// lispval_append_child(new, clone_lispval(old->cell[i]));
 			lispval_append_child(new, old->cell[i]);
 		} 
+		return clone_lispval(new);
+	} else {
+		return lispval_err("Error: Unreachable point reached in tail function");
 	}
 	
-	return clone_lispval(new);
 	// Returns something that should be freed later: yes.
   // Returns something that doesn't share pointers with the input: yes.
 }
@@ -405,8 +407,8 @@ lispval* builtin_eval(lispval* v){
 	// not sure how this will end up working, but we'll see
 	LISPVAL_ASSERT(v->count ==1, "Error: function eval passed too many arguments");
   LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
-  v->type=LISPVAL_SEXPR;
-	return evaluate_lispval(v);
+  v->cell[0]->type=LISPVAL_SEXPR;
+	return evaluate_lispval(v->cell[0]);
 }
 
 lispval* builtin_join(lispval* l){
