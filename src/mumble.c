@@ -459,7 +459,7 @@ lispval* evaluate_lispval(lispval* l)
     // Check if the first element is an operation.
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_SYM)) {
         lispval* op = pop_lispval(l, 0);
-        lispval* result = builtin_functions(op->sym, l);
+        lispval* result = builtin_simple_math_ops(op->sym, l);
         delete_lispval(op);
         return result;
     }
@@ -483,7 +483,7 @@ int main(int argc, char** argv)
     /* Define them with the following Language */
     mpca_lang(MPCA_LANG_DEFAULT, "                           \
     number   : /-?[0-9]+\\.?([0-9]+)?/ ;                     \
-    symbol : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\"       \
+    symbol : \"list\" | \"head\" | \"tail\" | \"eval\"       \
 		       | '+' | '-' | '*' | '/' ;                         \
 		sexpr : '(' <expr>* ')' ;                                \
 		qexpr : '{' <expr>* '}' ;                                \
@@ -530,8 +530,8 @@ int main(int argc, char** argv)
                     print_lispval_parenthesis(result);
                     printf("\n");
                 }
-								// delete_lispval(result);
                 delete_lispval(l);
+								// delete_lispval(result);
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
