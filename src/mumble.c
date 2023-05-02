@@ -407,6 +407,19 @@ lispval* builtin_list(lispval* v)
     // Returns something that is independent of the input: yes.
 }
 
+lispval* builtin_len(lispval* v)
+{
+    // tail { 1 2 3 }
+    LISPVAL_ASSERT(v->count == 1, "Error: function len passed too many arguments");
+
+    lispval* source = v->cell[0];
+    LISPVAL_ASSERT(source->type == LISPVAL_QEXPR, "Error: Argument passed to len is not a q-expr, i.e., a bracketed list.");
+    lispval* new = lispval_num(source->count);
+		return new;
+    // Returns something that should be freed later: yes.
+    // Returns something that doesn't share pointers with the input: yes.
+}
+
 lispval* evaluate_lispval(lispval* l);
 lispval* builtin_eval(lispval* v)
 {
@@ -509,6 +522,8 @@ lispval* builtin_functions(char* func, lispval* v)
         return builtin_join(v);
     } else if (strcmp("eval", func) == 0) {
         return builtin_eval(v);
+    } else if (strcmp("len", func) == 0) {
+        return builtin_len(v);
     } else if (strstr("+-/*", func)) {
         return builtin_math_ops(func, v);
     } else {
@@ -573,7 +588,7 @@ int main(int argc, char** argv)
     mpca_lang(MPCA_LANG_DEFAULT, "                           \
     number   : /-?[0-9]+\\.?([0-9]+)?/ ;                     \
     symbol : \"list\" | \"head\" | \"tail\"  \
-		       | \"eval\" | \"join\"   \
+		       | \"eval\" | \"join\" | \"len\"   \
            | '+' | '-' | '*' | '/' ;        \
 		sexpr : '(' <expr>* ')' ;                                \
 		qexpr : '{' <expr>* '}' ;                                \
