@@ -646,16 +646,18 @@ lispval* builtin_functions(char* func, lispval* v, lispenv* env)
 // Evaluate the lispval
 lispval* evaluate_lispval(lispval* l, lispenv* env)
 {
+    // Check if this is neither an s-expression nor a symbol; otherwise return as is.
+    if (l->type != LISPVAL_SEXPR && l->type != LISPVAL_SYM)
+        return l;
+
 	  // Check if this is a symbol
 		if(l->type == LISPVAL_SYM){
 			get_from_lispenv(l->sym, env);
 		}
-    // Check if this is an s-expression
-    if (l->type != LISPVAL_SEXPR)
-        return l;
-    // Evaluate the children if needed
+
+		// Evaluate the children if needed
     for (int i = 0; i < l->count; i++) {
-        if (l->cell[i]->type == LISPVAL_SEXPR) {
+        if (l->cell[i]->type == LISPVAL_SEXPR || l->cell[i]->type == LISPVAL_SYM) {
             l->cell[i] = evaluate_lispval(l->cell[i], env);
         }
     }
@@ -667,17 +669,18 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
     }
 
     // Check if the first element is an operation.
-    if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_SYM)) {
+    if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_FUNC)) {
         lispval* temp = clone_lispval(l->cell[0]);
-        lispval* operation = pop_lispval(l, 0);
+        lispval* f = pop_lispval(l, 0);
         lispval* operands = temp;
         // lispval* operation = clone_lispval(l->cell[0]);
         // lispval* operands = lispval_sexpr();
         // for (int i = 1; i < l->count; i++) {
         //    lispval_append_child(operands, l->cell[i]);
         // }
-        lispval* answer = builtin_functions(operation->sym, l, env);
-        delete_lispval(operation);
+        lispval* answer = f->func(env, operands); 
+				// builtin_functions(operation->sym, l, env);
+        delete_lispval(f);
         delete_lispval(operands);
         return answer;
     }
