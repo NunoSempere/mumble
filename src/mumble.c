@@ -358,10 +358,10 @@ void print_lispval_tree(lispval* v, int indent_level)
         printfln("Error: unknown lispval type\n");
         // printfln("%s", v->sym);
     }
-		if(VERBOSE) printfln("Freeing indent");
+		if(VERBOSE > 1) printfln("Freeing indent");
     if (indent!=NULL) free(indent);
     indent = NULL;
-		if(VERBOSE) printfln("Freed indent");
+		if(VERBOSE > 1) printfln("Freed indent");
 }
 
 void print_lispval_parenthesis(lispval* v)
@@ -598,6 +598,29 @@ lispval* builtin_join(lispval* l, lispenv* e)
     // Returns something that is independent of the input: yes.
 }
 
+// Define a variable
+lispval* builtin_def(lispval* v, lispenv* env){
+  // Takes one argument: def { { a b } { 1 2 } } 
+  lispval* source = v->cell[0];
+	LISPVAL_ASSERT(v->count == 1, "Error: function def passed too many arguments");
+	LISPVAL_ASSERT(source->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
+	LISPVAL_ASSERT(source->count == 2, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
+	LISPVAL_ASSERT(source->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
+	LISPVAL_ASSERT(source->cell[1]->type == LISPVAL_QEXPR, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
+	LISPVAL_ASSERT(source->cell[0]->count == source->cell[1]->count, "Error: In function \"def\" both subarguments should have the same length");
+	
+	lispval* symbols = source->cell[0];
+	lispval* values = source->cell[1];
+	for(int i; i < symbols->count; i++){
+		LISPVAL_ASSERT(symbols->cell[i]->type == LISPVAL_SYM, "Error: in function def, the first list of items should be of type symbol:  def { { a b } { 1 2 } }");
+		if(VERBOSE) print_lispval_tree(symbols, 0);
+		if(VERBOSE) print_lispval_tree(values, 0);
+		if(VERBOSE) printf("\n");
+		insert_in_lispenv(symbols->cell[i]->sym, values->cell[i], env);
+	}
+  return lispval_sexpr(); // ()
+}
+
 // Simple math ops
 lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
 {
@@ -711,6 +734,7 @@ void lispenv_add_builtins(lispenv* env){
 		lispenv_add_builtin("tail", builtin_tail, env);
 		lispenv_add_builtin("eval", builtin_eval, env);
 		lispenv_add_builtin("join", builtin_join, env);
+		lispenv_add_builtin("def", builtin_def, env);
 }
 
 // Evaluate the lispval
