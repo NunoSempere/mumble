@@ -233,7 +233,7 @@ lispval* builtin_op(char* op, lispval* v){
 	// For now, ensure all args are numbers
 	for(int i=0; i<v->count; i++){
 		if(v->cell[i]->type != LISPVAL_NUM){
-			return lispval_err("Error: Operating on non-numbers");
+			return lispval_err("Error: Operating on non-numbers. This can be caused by an input like (+ 1 2 (3 * 4)). Because the (3 * 4) doesn't have the correct operation order, it isn't simplified, and then + can't sum over it.");
 		}
 	}
 	// Check how many elements
@@ -338,23 +338,27 @@ int main(int argc, char** argv)
                 mpc_ast_t* ast = result.output;
 
                 // Print AST if VERBOSE
-                if (VERBOSE)
+                if (VERBOSE){
+									  printf("\nPrinting AST");
                     print_ast(ast, 0);
-
+								}
                 // Evaluate the AST
                 // if(VERBOSE) printf("\n\nEvaluating the AST");
                 // lispval result = evaluate_ast(ast);
                 lispval* l = read_lispval(ast);
                 if (VERBOSE){
-                    printf("\n\nTree printing: ");
-										print_lispval_tree(l, 0);
-								}
-                if (VERBOSE){
-                    printf("\nParenthesis printing: \n");
+								    printf("\n\nPrinting initially parsed lispvalue");
+                    printf("\nTree printing: ");
+										print_lispval_tree(l, 2);
+                    printf("\nParenthesis printing: ");
 										print_lispval_parenthesis(l);
 								}
 								lispval* result = evaluate_lispval(l);
-								printf("\n"); print_lispval_parenthesis(result);
+								{
+									printf("\n\nResult: "); 
+									print_lispval_parenthesis(result);
+									printf("\n");
+								}
                 delete_lispval(l);
             } else {
                 /* Otherwise Print the Error */
