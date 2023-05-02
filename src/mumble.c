@@ -21,7 +21,8 @@ enum {
     LISPVAL_NUM,
     LISPVAL_ERR,
     LISPVAL_SYM,
-    LISPVAL_SEXPR
+    LISPVAL_SEXPR,
+		LISPVAL_QEXPR,
 };
 
 enum {
@@ -66,6 +67,15 @@ lispval* lispval_sexpr(void)
     return v;
 }
 
+lispval* lispval_qexpr(void)
+{
+    lispval* v = malloc(sizeof(lispval));
+    v->type = LISPVAL_QEXPR;
+    v->count = 0;
+    v->cell = NULL;
+    return v;
+}
+
 // Destructor
 void delete_lispval(lispval* v)
 {
@@ -79,6 +89,7 @@ void delete_lispval(lispval* v)
         free(v->sym);
         break;
     case LISPVAL_SEXPR:
+    case LISPVAL_QEXPR:
         for (int i = 0; i < v->count; i++) {
             delete_lispval(v->cell[i]);
         }
@@ -109,13 +120,28 @@ lispval* read_lispval(mpc_ast_t* t)
         return read_lispval_num(t);
     } else if (strstr(t->tag, "symbol")) {
         return lispval_sym(t->contents);
-    } else if ((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr")) {
-        lispval* x = lispval_sexpr();
+    } else if ((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr") || strstr(t->tag, "qexpr")) {
+			  
+        lispval* x;
+				if((strcmp(t->tag, ">") == 0) || strstr(t->tag, "sexpr")){
+					x = lispval_sexpr();
+				} else if(strstr(t->tag, "qexpr")){
+					x = lispval_qexpr();
+				} else {
+					return lispval_err("Error: Unreachable code state reached.");
+				}
+
         for (int i = 0; i < (t->children_num); i++) {
             if (strcmp(t->children[i]->contents, "(") == 0) {
                 continue;
             }
             if (strcmp(t->children[i]->contents, ")") == 0) {
+                continue;
+            }
+            if (strcmp(t->children[i]->contents, "{") == 0) {
+                continue;
+            }
+            if (strcmp(t->children[i]->contents, "}") == 0) {
                 continue;
             }
             if (strcmp(t->children[i]->tag, "regex") == 0) {
@@ -124,8 +150,8 @@ lispval* read_lispval(mpc_ast_t* t)
             x = lispval_append_child(x, read_lispval(t->children[i]));
         }
         return x;
-    } else {
-        lispval* err = lispval_err("Unknown ast type.");
+		} else {
+        lispval* err = lispval_err("Unknown AST type.");
         return err;
     }
 }
@@ -155,6 +181,12 @@ void print_lispval_tree(lispval* v, int indent_level)
             print_lispval_tree(v->cell[i], indent_level + 2);
         }
         break;
+    case LISPVAL_QEXPR:
+        printf("\n%sQExpr, with %d children:", indent, v->count);
+        for (int i = 0; i < v->count; i++) {
+            print_lispval_tree(v->cell[i], indent_level + 2);
+        }
+        break;
     default:
         printf("Error: unknown lispval type\n");
         printf("%s", v->sym);
@@ -180,6 +212,13 @@ void print_lispval_parenthesis(lispval* v)
             print_lispval_parenthesis(v->cell[i]);
         }
         printf(") ");
+        break;
+    case LISPVAL_QEXPR:
+        printf("{ ");
+        for (int i = 0; i < v->count; i++) {
+            print_lispval_parenthesis(v->cell[i]);
+        }
+        printf("} ");
         break;
     default:
         printf("Error: unknown lispval type\n");
@@ -316,18 +355,20 @@ int main(int argc, char** argv)
     mpc_parser_t* Number = mpc_new("number");
     mpc_parser_t* Symbol = mpc_new("symbol");
     mpc_parser_t* Sexpr = mpc_new("sexpr");
+    mpc_parser_t* Qexpr = mpc_new("qexpr");
     mpc_parser_t* Expr = mpc_new("expr");
     mpc_parser_t* Mumble = mpc_new("mumble");
 
     /* Define them with the following Language */
-    mpca_lang(MPCA_LANG_DEFAULT, "                                       \
+    mpca_lang(MPCA_LANG_DEFAULT, "                           \
     number   : /-?[0-9]+\\.?([0-9]+)?/ ;                     \
-    symbol : '+' | '-' | '*' | '/' ;            \
-		sexpr : '(' <expr>* ')' ;                   \
-    expr     : <number> | <symbol> | <sexpr> ;  \
-    mumble    : /^/ <expr>* /$/ ;               \
+    symbol : '+' | '-' | '*' | '/' ;                         \
+		sexpr : '(' <expr>* ')' ;                                \
+		qexpr : '{' <expr>* '}' ;                                \
+    expr     : <number> | <symbol> | <sexpr> | <qexpr>;      \
+    mumble    : /^/ <expr>* /$/ ;                            \
   ",
-        Number, Symbol, Sexpr, Expr, Mumble);
+        Number, Symbol, Sexpr, Qexpr, Expr, Mumble);
 
     // Initialize a repl
     int loop = 1;
@@ -381,7 +422,7 @@ int main(int argc, char** argv)
     }
 
     /* Undefine and Delete our Parsers */
-    mpc_cleanup(5, Number, Symbol, Sexpr, Expr, Mumble);
+    mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Mumble);
 
     return 0;
 }
