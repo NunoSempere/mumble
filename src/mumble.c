@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "mpc/mpc.h"
-#define VERBOSE 0
+#define VERBOSE 2
 #define LISPVAL_ASSERT(cond, err) \
     if (!(cond)) {                \
         return lispval_err(err);  \
@@ -31,7 +31,7 @@ struct lispenv;
 typedef struct lispval lispval;
 typedef struct lispenv lispenv;
 
-typedef lispval*(*lispbuiltin)(lispenv*, lispval*); 
+typedef lispval*(*lispbuiltin)(lispval*, lispenv*); 
 // this defines the lispbuiltin type
 // which seems to be a pointer to a function which takes in a lispenv*
 // and a lispval* and returns a lispval*
@@ -99,13 +99,14 @@ lispval* lispval_sym(char* symbol)
 }
 
 lispval* lispval_func(lispbuiltin func, char* funcname){
-    if(VERBOSE) printfln("Allocated sym");
+    if(VERBOSE) printfln("Allocating func name:%s, pointer: %p", funcname, func);
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_FUNC;
     v->count = 0;
-    v->sym = malloc(strlen(funcname) + 1);
+    v->funcname = malloc(strlen(funcname) + 1);
     strcpy(v->funcname, funcname);
 		v->func = func;
+    if(VERBOSE) printfln("Allocated func");
     return v;
 }
 
@@ -367,30 +368,30 @@ void print_lispval_parenthesis(lispval* v)
 {
     switch (v->type) {
     case LISPVAL_NUM:
-        printfln("%f ", v->num);
+        printf("%f ", v->num);
         break;
     case LISPVAL_ERR:
-        printfln("%s ", v->err);
+        printf("%s ", v->err);
         break;
     case LISPVAL_SYM:
-        printfln("%s ", v->sym);
+        printf("%s ", v->sym);
         break;
     case LISPVAL_FUNC:
-        printfln("<function name: %s pointer: %p>", v->funcname, v->func);
+        printf("<function name: %s, pointer: %p> ", v->funcname, v->func);
         break;
     case LISPVAL_SEXPR:
-        printfln("( ");
+        printf("( ");
         for (int i = 0; i < v->count; i++) {
             print_lispval_parenthesis(v->cell[i]);
         }
-        printfln(") ");
+        printf(") ");
         break;
     case LISPVAL_QEXPR:
-        printfln("{ ");
+        printf("{ ");
         for (int i = 0; i < v->count; i++) {
             print_lispval_parenthesis(v->cell[i]);
         }
-        printfln("} ");
+        printf("} ");
         break;
     default:
         printfln("Error: unknown lispval type\n");
@@ -458,7 +459,7 @@ lispval* clone_lispval(lispval* old)
 
 lispval* pop_lispval(lispval* v, int i)
 {
-    LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function pop passed too many arguments");
+    LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function pop wasn't passed a q-expression or an s-expression arguments");
     lispval* r = v->cell[i];
     /* Shift memory after the item at "i" over the top */
     memmove(&v->cell[i], &v->cell[i + 1],
@@ -482,7 +483,7 @@ lispval* take_lispval(lispval* v, int i)
 
 // Operations
 // Ops for q-expressions
-lispval* builtin_head(lispval* v)
+lispval* builtin_head(lispval* v, lispenv* e)
 {
     // printfln("Entering builtin_head with v->count = %d and v->cell[0]->type = %d\n", v->count, v->cell[0]->type);
     // head { 1 2 3 }
@@ -501,7 +502,7 @@ lispval* builtin_head(lispval* v)
     // Returns something that doesn't share pointers with the input: yes.
 }
 
-lispval* builtin_tail(lispval* v)
+lispval* builtin_tail(lispval* v, lispenv* env)
 {
     // tail { 1 2 3 }
     LISPVAL_ASSERT(v->count == 1, "Error: function tail passed too many arguments");
@@ -528,7 +529,7 @@ lispval* builtin_tail(lispval* v)
     // Returns something that doesn't share pointers with the input: yes.
 }
 
-lispval* builtin_list(lispval* v)
+lispval* builtin_list(lispval* v, lispenv* e)
 {
     // list ( 1 2 3 )
     LISPVAL_ASSERT(v->count == 1, "Error: function list passed too many arguments");
@@ -541,7 +542,7 @@ lispval* builtin_list(lispval* v)
     // Returns something that is independent of the input: yes.
 }
 
-lispval* builtin_len(lispval* v)
+lispval* builtin_len(lispval* v, lispenv* e)
 {
     // tail { 1 2 3 }
     LISPVAL_ASSERT(v->count == 1, "Error: function len passed too many arguments");
@@ -571,7 +572,7 @@ lispval* builtin_eval(lispval* v, lispenv* env)
     // Returns something that is independent of the input: depends on the output of evaluate_lispval.
 }
 
-lispval* builtin_join(lispval* l)
+lispval* builtin_join(lispval* l, lispenv* e)
 {
     // return lispval_err("Error: Join not ready yet.");
     // join { {1 2} {3 4} }
@@ -594,7 +595,7 @@ lispval* builtin_join(lispval* l)
 }
 
 // Simple math ops
-lispval* builtin_math_ops(char* op, lispval* v)
+lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
 {
     // For now, ensure all args are numbers
     for (int i = 0; i < v->count; i++) {
@@ -643,23 +644,40 @@ lispval* builtin_math_ops(char* op, lispval* v)
     // Returns something that is independent of the input: yes.
 }
 
+// Fit the simple math ops using the above code
+lispval* builtin_add(lispval* v, lispenv* env) {
+  return builtin_math_ops("+", v, env);
+}
+
+lispval* builtin_substract(lispval* v, lispenv* env) {
+  return builtin_math_ops("-", v, env);
+}
+
+lispval* builtin_multiply(lispval* v, lispenv* env) {
+  return builtin_math_ops("*", v, env);
+}
+
+lispval* builtin_divide(lispval* v, lispenv* env) {
+  return builtin_math_ops("/", v, env);
+}
+
 // Aggregate both math and operations over lists
 lispval* builtin_functions(char* func, lispval* v, lispenv* env)
 {
     if (strcmp("list", func) == 0) {
-        return builtin_list(v);
+        return builtin_list(v, env);
     } else if (strcmp("head", func) == 0) {
-        return builtin_head(v);
+        return builtin_head(v, env);
     } else if (strcmp("tail", func) == 0) {
-        return builtin_tail(v);
+        return builtin_tail(v, env);
     } else if (strcmp("join", func) == 0) {
-        return builtin_join(v);
+        return builtin_join(v, env);
     } else if (strcmp("eval", func) == 0) {
         return builtin_eval(v, env);
     } else if (strcmp("len", func) == 0) {
-        return builtin_len(v);
+        return builtin_len(v, env);
     } else if (strstr("+-/*", func)) {
-        return builtin_math_ops(func, v);
+        return builtin_math_ops(func, v, env);
     } else {
         return lispval_err("Unknown function");
     }
@@ -667,30 +685,61 @@ lispval* builtin_functions(char* func, lispval* v, lispenv* env)
     // Returns something that is independent of the input: depends on eval
 }
 
+// Add builtins to an env
+void lispenv_add_builtin(char* funcname, lispbuiltin func, lispenv* env ){
+  if(VERBOSE) printfln("Adding func: name: %s, pointer: %p", funcname, func);
+	lispval* f = lispval_func(func, funcname);
+	if(VERBOSE) print_lispval_tree(f, 0);
+	insert_in_lispenv(funcname, f,env);
+	// delete_lispval(f);
+}
+void lispenv_add_builtins(lispenv* env){
+   // Math functions
+	 lispenv_add_builtin("+", builtin_add, env);
+	 lispenv_add_builtin("-", builtin_substract, env);
+	 lispenv_add_builtin("*", builtin_multiply, env);
+	 lispenv_add_builtin("/", builtin_divide, env);
+	 
+	 // 
+  /* List Functions */
+		lispenv_add_builtin("list", builtin_list, env);
+		lispenv_add_builtin("head", builtin_head, env);
+		lispenv_add_builtin("tail", builtin_tail, env);
+		lispenv_add_builtin("eval", builtin_eval, env);
+		lispenv_add_builtin("join", builtin_join, env);
+}
+
 // Evaluate the lispval
 lispval* evaluate_lispval(lispval* l, lispenv* env)
 {
+    if(VERBOSE) printfln("Evaluating lispval");
     // Check if this is neither an s-expression nor a symbol; otherwise return as is.
+    if(VERBOSE) printfln("");
     if (l->type != LISPVAL_SEXPR && l->type != LISPVAL_SYM)
         return l;
 
 	  // Check if this is a symbol
+    if(VERBOSE) printfln("Checking if this is a symbol");
 		if(l->type == LISPVAL_SYM){
 			// Unclear how I want to structure this so as to not get memory errors.
 			return get_from_lispenv(l->sym, env);
 		}
 
 		// Evaluate the children if needed
+    if(VERBOSE) printfln("Evaluating children");
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_SEXPR || l->cell[i]->type == LISPVAL_SYM) {
             // l->cell[i] = 
+						if(VERBOSE) printfln("");
 						lispval* new = evaluate_lispval(l->cell[i], env);
 						// delete_lispval(l->cell[i]);
 						// ^ gave me a "double free" error.
 						l->cell[i] = new;
+						if(VERBOSE) printfln("");
         }
     }
     // Check if any are errors.
+    if(VERBOSE) printfln("Checking for errors in children");
 		lispval* err = NULL;
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_ERR) {
@@ -703,23 +752,36 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 				delete_lispval(l->cell[i]);
 			}
 			*/
+			if(VERBOSE) printfln("Returning error");
 			return err;
 		}
 
     // Check if the first element is an operation.
+    if(VERBOSE) printfln("Checking is first element is a function");
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_FUNC)) {
-        lispval* temp = clone_lispval(l->cell[0]);
-        lispval* f = pop_lispval(temp, 0);
+				if(VERBOSE) printfln("Passed check");
+				if(VERBOSE) printfln("Operating on:");
+				if(VERBOSE) print_lispval_tree(l, 4); 
+        lispval* temp = clone_lispval(l);
+        lispval* f = pop_lispval(temp, 0); 
+				// pop is destructive.
         lispval* operands = temp;
+				if(VERBOSE) printfln("Allocated memory");
         // lispval* operation = clone_lispval(l->cell[0]);
         // lispval* operands = lispval_sexpr();
         // for (int i = 1; i < l->count; i++) {
         //    lispval_append_child(operands, l->cell[i]);
         // }
-        lispval* answer = f->func(env, operands); 
+				if(VERBOSE) printfln("Applying function to operands");
+        // lispval* answer = lispval_num(42);
+        lispval* answer= f->func(operands, env); 
+
+				if(VERBOSE) printfln("Applied function to operands");
+				if(VERBOSE) printfln("Cleaning up");
 				// builtin_functions(operation->sym, l, env);
         delete_lispval(f);
         delete_lispval(operands);
+				if(VERBOSE) printfln("Returning");
         return answer;
     }
     return l;
@@ -750,19 +812,30 @@ int main(int argc, char** argv)
   ",
         Number, Symbol, Sexpr, Qexpr, Expr, Mumble);
 
-    // Initialize a repl
-    int loop = 1;
-    while (loop) {
-        char* input = readline("mumble> ");
-        if (input == NULL) {
-            // ^ catches Ctrl+D
-            loop = 0;
-        } else {
-            /* Attempt to Parse the user Input */
-            mpc_result_t result;
-            if (mpc_parse("<stdin>", input, Mumble, &result)) {
-                /* On Success Print the AST */
-                // mpc_ast_print(result.output);
+	// Create an environment
+	if(VERBOSE) printfln("Creating lispenv");
+	lispenv* env = new_lispenv();
+	if(VERBOSE) printfln("Created lispenv");
+	if(VERBOSE) printfln("Adding builtins");
+	lispenv_add_builtins(env);
+	if(VERBOSE) printfln("Added builtins");
+	if(VERBOSE) printfln("Environment contents: %i", env->count);
+	if(VERBOSE) printfln(" env->syms[0]: %s", env->syms[0]);
+  if(VERBOSE) print_lispval_tree(env->vals[0], 2);
+	if(VERBOSE) printfln("\n");
+	// Initialize a repl
+	int loop = 1;
+	while (loop) {
+			char* input = readline("mumble> ");
+			if (input == NULL) {
+					// ^ catches Ctrl+D
+					loop = 0;
+			} else {
+					/* Attempt to Parse the user Input */
+					mpc_result_t result;
+					if (mpc_parse("<stdin>", input, Mumble, &result)) {
+							/* On Success Print the AST */
+							// mpc_ast_print(result.output);
                 /* Load AST from output */
                 mpc_ast_t* ast = result.output;
 
@@ -772,7 +845,6 @@ int main(int argc, char** argv)
                     print_ast(ast, 0);
                 }
                 // Evaluate the AST
-                if(VERBOSE) printfln("\nEvaluating the AST");
                 // lispval result = evaluate_ast(ast);
                 lispval* l = read_lispval(ast);
                 if (VERBOSE) {
@@ -782,22 +854,19 @@ int main(int argc, char** argv)
                     printfln("Parenthesis printing: ");
                     print_lispval_parenthesis(l);
                 }
-								// Create an environment
-								lispenv* env = new_lispenv();
 
 								// Eval the lispval in that environment.
+
                 lispval* answer = evaluate_lispval(l, env);
                 {
-                    printfln("Result: ");
+                    if(VERBOSE) printfln("Result: ");
                     print_lispval_parenthesis(answer);
-                    print_lispval_tree(answer, 0);
+                    if(VERBOSE) print_lispval_tree(answer, 0);
 										printf("\n");
                 }
 								// ^ I do not understand how the memory in l is freed.
                 delete_lispval(answer);
                 // delete_lispval(l);
-								// Clean up environment
-								destroy_lispenv(env);
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
@@ -810,6 +879,11 @@ int main(int argc, char** argv)
         free(input);
         input = NULL;
     }
+
+		// Clean up environment
+		destroy_lispenv(env);
+								// Clean up environment
+								destroy_lispenv(env);
 
     /* Undefine and Delete our Parsers */
     mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Mumble);
