@@ -38,7 +38,7 @@ enum {
 // Constructors
 lispval* lispval_num(double x)
 {
-    printf("\nAllocated num");
+    if(VERBOSE) printf("\nAllocated num");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_NUM;
     v->count = 0;
@@ -48,7 +48,7 @@ lispval* lispval_num(double x)
 
 lispval* lispval_err(char* message)
 {
-    printf("\nAllocated err");
+    if(VERBOSE) printf("\nAllocated err");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_ERR;
     v->count = 0;
@@ -59,7 +59,7 @@ lispval* lispval_err(char* message)
 
 lispval* lispval_sym(char* symbol)
 {
-    printf("\nAllocated sym");
+    if(VERBOSE) printf("\nAllocated sym");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_SYM;
     v->count = 0;
@@ -70,7 +70,7 @@ lispval* lispval_sym(char* symbol)
 
 lispval* lispval_sexpr(void)
 {
-    printf("\nAllocated sexpr");
+    if(VERBOSE) printf("\nAllocated sexpr");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_SEXPR;
     v->count = 0;
@@ -80,7 +80,7 @@ lispval* lispval_sexpr(void)
 
 lispval* lispval_qexpr(void)
 {
-    printf("\nAllocated qexpr");
+    if(VERBOSE) printf("\nAllocated qexpr");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_QEXPR;
     v->count = 0;
@@ -91,51 +91,38 @@ lispval* lispval_qexpr(void)
 // Destructor
 void delete_lispval(lispval* v)
 {
-    // printf("\n1");
     switch (v->type) {
     case LISPVAL_NUM:
-        printf("\nFreed num");
-        // free(v);
-        // v = NULL;
-        // printf("\n2");
+        if(VERBOSE) printf("\nFreed num");
         break;
     case LISPVAL_ERR:
-        printf("\nFreed err");
-        // printf("\n3");
+        if(VERBOSE) printf("\nFreed err");
         if (v->err != NULL)
             free(v->err);
         v->err = NULL;
         break;
     case LISPVAL_SYM:
-        printf("\nFreed sym");
-        // printf("\n4");
+        if(VERBOSE) printf("\nFreed sym");
         if (v->sym != NULL)
             free(v->sym);
         v->sym = NULL;
         break;
     case LISPVAL_SEXPR:
-        // printf("\n5");
     case LISPVAL_QEXPR:
-        printf("\nFreed s/qexpr");
-        // printf("\n6");
+        if(VERBOSE) printf("\nFreed s/qexpr");
         for (int i = 0; i < v->count; i++) {
             if (v->cell[i] != NULL)
                 delete_lispval(v->cell[i]);
             v->cell[i] = NULL;
         }
-        // printf("\n8");
         if (v->cell != NULL)
             free(v->cell);
         v->cell = NULL;
-
-        // printf("\n9");
         break;
     }
     if (v != NULL)
         free(v);
-    // printf("\n10");
     v = NULL;
-    // printf("\n11");
 }
 
 // Read ast into a lispval object
@@ -158,7 +145,7 @@ lispval* read_lispval(mpc_ast_t* t)
 {
     // Non-ignorable children
     // Relevant for the edge-case of considering the case where you
-    // only have one top level item.
+    // only have one top level item in brackets
     int c = 0;
     int c_index = -1;
     for (int i = 0; i < t->children_num; i++) {
@@ -212,7 +199,7 @@ lispval* read_lispval(mpc_ast_t* t)
 // Print
 void print_lispval_tree(lispval* v, int indent_level)
 {
-    char* indent = malloc(sizeof(char) * (indent_level + 1)); // "";
+    char* indent = malloc(sizeof(char) * (indent_level + 1)); 
     for (int i = 0; i < indent_level; i++) {
         indent[i] = ' ';
     }
@@ -305,38 +292,26 @@ void print_ast(mpc_ast_t* ast, int indent_level)
 lispval* clone_lispval(lispval* old)
 {
     lispval* new;
-    // print_lispval_tree(old, 0);
-    // printf("\nCloning lispval of type %d\n", old->type);
     switch (old->type) {
     case LISPVAL_NUM:
-        // printf("\n1");
-        // printf("\nnum: %f", old->num);
-        // print_lispval_tree(old, 0);
         new = lispval_num(old->num);
-        // printf("\nAssigned new");
-        // printf("\n count: %i", old->count);
         break;
     case LISPVAL_ERR:
-        // printf("2");
         new = lispval_err(old->err);
         break;
     case LISPVAL_SYM:
-        // printf("3");
         new = lispval_sym(old->sym);
         break;
     case LISPVAL_SEXPR:
-        // printf("4");
         new = lispval_sexpr();
         break;
     case LISPVAL_QEXPR:
-        // printf("\n5");
         new = lispval_qexpr();
         break;
     default:
         return lispval_err("Error: Cloning element of unknown type.");
     }
 
-    // printf("\n6");
     if (old->count > 0 && (old->type == LISPVAL_QEXPR || old->type == LISPVAL_SEXPR)) {
         for (int i = 0; i < old->count; i++) {
             lispval* temp_child = old->cell[i];
@@ -381,11 +356,7 @@ lispval* builtin_head(lispval* v)
     LISPVAL_ASSERT(v->count == 1, "Error: function head passed too many arguments");
     LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to head is not a q-expr, i.e., a bracketed list.");
     LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to head is {}");
-    // printf("Passed assertions, v->cell[0]->count = %d\n", v->cell[0]->count);
-    // print_lispval_parenthesis(v);
-    // print_lispval_parenthesis(v->cell[0]);
     lispval* result = clone_lispval(v->cell[0]->cell[0]);
-    // printf("Cloned lispval, result->type = %d\n", result->type);
     // lispval* result = pop_lispval(v->cell[0], 0);
     // ^ also possible
     // A bit unclear. Pop seems like it would depend on the size of the array. clone depends on the sie of head.
@@ -405,19 +376,17 @@ lispval* builtin_tail(lispval* v)
     LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to tail is not a q-expr, i.e., a bracketed list.");
     LISPVAL_ASSERT(old->count != 0, "Error: Argument passed to tail is {}");
 
-    // lispval* head = pop_lispval(v->cell[0], 0);
-    // print_lispval_parenthesis(v);
-    // print_lispval_parenthesis(old);
     lispval* new = lispval_qexpr();
     if (old->count == 1) {
         return new;
     } else if (old->count > 1 && old->type == LISPVAL_QEXPR) {
         for (int i = 1; i < (old->count); i++) {
             // lispval_append_child(new, clone_lispval(old->cell[i]));
-            lispval_append_child(new, old->cell[i]);
+            lispval_append_child(new, clone_lispval(old->cell[i]));
         }
-        return clone_lispval(new);
+        return new;
     } else {
+				delete_lispval(new);
         return lispval_err("Error: Unreachable point reached in tail function");
     }
 
@@ -581,8 +550,6 @@ lispval* evaluate_lispval(lispval* l)
         lispval* answer = builtin_functions(operation->sym, l);
         delete_lispval(operation);
         delete_lispval(operands);
-        // delete_lispval(operation);
-        // delete_lispval(operands); // < wrong!  they still remain in the list.
         return answer;
     }
     return l;
@@ -637,7 +604,7 @@ int main(int argc, char** argv)
                     print_ast(ast, 0);
                 }
                 // Evaluate the AST
-                // if(VERBOSE) printf("\n\nEvaluating the AST");
+                if(VERBOSE) printf("\n\nEvaluating the AST");
                 // lispval result = evaluate_ast(ast);
                 lispval* l = read_lispval(ast);
                 if (VERBOSE) {
