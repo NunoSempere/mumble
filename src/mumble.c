@@ -210,92 +210,100 @@ void print_ast(mpc_ast_t* ast, int indent_level)
 // Evaluate the lispval
 lispval* pop_lispval(lispval* v, int i)
 {
-	lispval* r = v->cell[i];
-  /* Shift memory after the item at "i" over the top */
-  memmove(&v->cell[i], &v->cell[i+1],
-    sizeof(lispval*) * (v->count-i-1));
+    lispval* r = v->cell[i];
+    /* Shift memory after the item at "i" over the top */
+    memmove(&v->cell[i], &v->cell[i + 1],
+        sizeof(lispval*) * (v->count - i - 1));
 
-  /* Decrease the count of items in the list */
-  v->count--;
+    /* Decrease the count of items in the list */
+    v->count--;
 
-  /* Reallocate the memory used */
-  v->cell = realloc(v->cell, sizeof(lispval*) * v->count);
-  return r;
+    /* Reallocate the memory used */
+    v->cell = realloc(v->cell, sizeof(lispval*) * v->count);
+    return r;
 }
 
-lispval* take_lispval(lispval* v, int i){ // Unneeded.
-	lispval* x = pop_lispval(v, i);
-	delete_lispval(v);
-	return x;
+lispval* take_lispval(lispval* v, int i)
+{ // Unneeded.
+    lispval* x = pop_lispval(v, i);
+    delete_lispval(v);
+    return x;
 }
 
-lispval* builtin_op(char* op, lispval* v){
-	// For now, ensure all args are numbers
-	for(int i=0; i<v->count; i++){
-		if(v->cell[i]->type != LISPVAL_NUM){
-			return lispval_err("Error: Operating on non-numbers. This can be caused by an input like (+ 1 2 (3 * 4)). Because the (3 * 4) doesn't have the correct operation order, it isn't simplified, and then + can't sum over it.");
-		}
-	}
-	// Check how many elements
-	if(v->count == 0){
-			return lispval_err("Error: No numbers on which to operate!");
-	} else if(v->count == 1) {
-		if(strcmp(op, "-") == 0){
-			return lispval_num(-v->cell[0]->num);
-		}else {
-			return lispval_err("Error: Non minus unary operation");
-		}
-	} else if (v->count >= 2){
-		lispval* x = pop_lispval(v,0);
+lispval* builtin_op(char* op, lispval* v)
+{
+    // For now, ensure all args are numbers
+    for (int i = 0; i < v->count; i++) {
+        if (v->cell[i]->type != LISPVAL_NUM) {
+            return lispval_err("Error: Operating on non-numbers. This can be caused by an input like (+ 1 2 (3 * 4)). Because the (3 * 4) doesn't have the correct operation order, it isn't simplified, and then + can't sum over it.");
+        }
+    }
+    // Check how many elements
+    if (v->count == 0) {
+        return lispval_err("Error: No numbers on which to operate!");
+    } else if (v->count == 1) {
+        if (strcmp(op, "-") == 0) {
+            return lispval_num(-v->cell[0]->num);
+        } else {
+            return lispval_err("Error: Non minus unary operation");
+        }
+    } else if (v->count >= 2) {
+        lispval* x = pop_lispval(v, 0);
 
-		while(v->count > 0){
-			// Pop the next element 
-			lispval* y = pop_lispval(v, 0);
+        while (v->count > 0) {
+            // Pop the next element
+            lispval* y = pop_lispval(v, 0);
 
-			if (strcmp(op, "+") == 0) { x->num += y->num; }
-			if (strcmp(op, "-") == 0) { x->num -= y->num; }
-			if (strcmp(op, "*") == 0) { x->num *= y->num; }
+            if (strcmp(op, "+") == 0) {
+                x->num += y->num;
+            }
+            if (strcmp(op, "-") == 0) {
+                x->num -= y->num;
+            }
+            if (strcmp(op, "*") == 0) {
+                x->num *= y->num;
+            }
 
-			if (strcmp(op, "/") == 0) {
-				if (y->num == 0) {
-					delete_lispval(x); delete_lispval(y);
-					return lispval_err("Error: Division By Zero!");
-				}
-				x->num /= y->num;
-			}
+            if (strcmp(op, "/") == 0) {
+                if (y->num == 0) {
+                    delete_lispval(x);
+                    delete_lispval(y);
+                    return lispval_err("Error: Division By Zero!");
+                }
+                x->num /= y->num;
+            }
 
-			delete_lispval(y);
-		}
-		return x;
-	} else {
-		return lispval_err("Error: Incorrect number of args. Perhaps a lispval->count was wrongly initialized?");
-	}
+            delete_lispval(y);
+        }
+        return x;
+    } else {
+        return lispval_err("Error: Incorrect number of args. Perhaps a lispval->count was wrongly initialized?");
+    }
 }
-
 
 lispval* evaluate_lispval(lispval* l)
 {
-  // Evaluate the children if needed
-	for(int i=0; i<l->count; i++){
-		if(l->cell[i]->type == LISPVAL_SEXPR){
-			l->cell[i] = evaluate_lispval(l->cell[i]);
-		}
-	}
-		// Check if any are errors.
-	for(int i=0; i<l->count; i++){
-		if(l->cell[i]->type == LISPVAL_ERR){ 
-			return pop_lispval(l, i);
-		}
-	}
+    // Evaluate the children if needed
+    for (int i = 0; i < l->count; i++) {
+        if (l->cell[i]->type == LISPVAL_SEXPR) {
+            l->cell[i] = evaluate_lispval(l->cell[i]);
+        }
+    }
+    // Check if any are errors.
+    for (int i = 0; i < l->count; i++) {
+        if (l->cell[i]->type == LISPVAL_ERR) {
+            return pop_lispval(l, i);
+        }
+    }
 
-	// Check if the first element is an operation.
-	if(l->count >=2 && ( (l->cell[0])->type == LISPVAL_SYM)){
-		lispval* op = pop_lispval(l, 0);
-		lispval* result = builtin_op(op->sym, l);
-		delete_lispval(op);
-		return result;
-	}
-	return l;
+    // Check if the first element is an operation.
+    if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_SYM)) {
+        lispval* op = pop_lispval(l, 0);
+        lispval* result = builtin_op(op->sym, l);
+        delete_lispval(op);
+        return result;
+    }
+    return l;
 }
 // Main
 int main(int argc, char** argv)
@@ -338,27 +346,27 @@ int main(int argc, char** argv)
                 mpc_ast_t* ast = result.output;
 
                 // Print AST if VERBOSE
-                if (VERBOSE){
-									  printf("\nPrinting AST");
+                if (VERBOSE) {
+                    printf("\nPrinting AST");
                     print_ast(ast, 0);
-								}
+                }
                 // Evaluate the AST
                 // if(VERBOSE) printf("\n\nEvaluating the AST");
                 // lispval result = evaluate_ast(ast);
                 lispval* l = read_lispval(ast);
-                if (VERBOSE){
-								    printf("\n\nPrinting initially parsed lispvalue");
+                if (VERBOSE) {
+                    printf("\n\nPrinting initially parsed lispvalue");
                     printf("\nTree printing: ");
-										print_lispval_tree(l, 2);
+                    print_lispval_tree(l, 2);
                     printf("\nParenthesis printing: ");
-										print_lispval_parenthesis(l);
-								}
-								lispval* result = evaluate_lispval(l);
-								{
-									printf("\n\nResult: "); 
-									print_lispval_parenthesis(result);
-									printf("\n");
-								}
+                    print_lispval_parenthesis(l);
+                }
+                lispval* result = evaluate_lispval(l);
+                {
+                    printf("\n\nResult: ");
+                    print_lispval_parenthesis(result);
+                    printf("\n");
+                }
                 delete_lispval(l);
             } else {
                 /* Otherwise Print the Error */
