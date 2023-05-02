@@ -10,7 +10,7 @@
 // Types
 typedef struct lispval {
     int type;
-    long num;
+    double num;
     char* err;
     char* sym;
     int count;
@@ -31,7 +31,7 @@ enum {
 };
 
 // Constructors
-lispval* lispval_num(long x)
+lispval* lispval_num(double x)
 {
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_NUM;
@@ -99,7 +99,7 @@ lispval* lispval_append_child(lispval* parent, lispval* child)
 lispval* read_lispval_num(mpc_ast_t* t)
 {
     errno = 0;
-    long x = strtol(t->contents, NULL, 10);
+    double x = strtod(t->contents, NULL);
     return errno != ERANGE ? lispval_num(x)
                            : lispval_err("Error: Invalid number.");
 }
@@ -141,7 +141,7 @@ void print_lispval_tree(lispval* v, int indent_level)
 
     switch (v->type) {
     case LISPVAL_NUM:
-        printf("\n%sNumber: %li", indent, v->num);
+        printf("\n%sNumber: %f", indent, v->num);
         break;
     case LISPVAL_ERR:
         printf("\n%sError: %s", indent, v->err);
@@ -166,7 +166,7 @@ void print_lispval_parenthesis(lispval* v)
 {
     switch (v->type) {
     case LISPVAL_NUM:
-        printf("%li ", v->num);
+        printf("%f ", v->num);
         break;
     case LISPVAL_ERR:
         printf("%s ", v->err);
@@ -313,7 +313,7 @@ int main(int argc, char** argv)
 
     /* Define them with the following Language */
     mpca_lang(MPCA_LANG_DEFAULT, "                                       \
-    number   : /-?[0-9]+/ ;                     \
+    number   : /-?[0-9]+\\.?([0-9]+)?/ ;                     \
     symbol : '+' | '-' | '*' | '/' ;            \
 		sexpr : '(' <expr>* ')' ;                   \
     expr     : <number> | <symbol> | <sexpr> ;  \
