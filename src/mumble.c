@@ -425,6 +425,7 @@ int main(int argc, char** argv)
                     printf("\n");
                 }
                 delete_lispval(l);
+								delete_lispval(result);
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
