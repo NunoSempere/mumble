@@ -270,39 +270,39 @@ void print_ast(mpc_ast_t* ast, int indent_level)
 lispval* clone_lispval(lispval* old)
 {
 	  lispval* new;
-		print_lispval_tree(old, 0);
-		printf("\nCloning lispval of type %d\n", old->type);
+		// print_lispval_tree(old, 0);
+		// printf("\nCloning lispval of type %d\n", old->type);
 	  switch(old->type){
     case LISPVAL_NUM:
-				printf("\n1");
-				printf("\nnum: %f", old->num);
-				print_lispval_tree(old, 0);
+				// printf("\n1");
+				// printf("\nnum: %f", old->num);
+				// print_lispval_tree(old, 0);
 			  new = lispval_num(old->num);
-				printf("\nAssigned new");
-				printf("\n count: %i", old->count);
+				// printf("\nAssigned new");
+				// printf("\n count: %i", old->count);
         break;
     case LISPVAL_ERR:
-				printf("2");
+				// printf("2");
         new = lispval_err(old->err);
         break;
     case LISPVAL_SYM:
-				printf("3");
+				// printf("3");
         new = lispval_sym(old->sym);
         break;
     case LISPVAL_SEXPR:
-				printf("4");
+				// printf("4");
 				new = lispval_sexpr();
 				break; 
     case LISPVAL_QEXPR:
-				printf("\n5");
+				// printf("\n5");
 				new = lispval_qexpr();
         break;
     default: 
 				return lispval_err("Error: Cloning element of unknown type.");
 		}
 		
-		printf("\n6");
-		if(old->count > 0){
+		// printf("\n6");
+		if(old->count > 0 && (old->type == LISPVAL_QEXPR || old->type == LISPVAL_SEXPR) ){
 			for (int i = 0; i < old->count; i++) {
 					lispval* temp_child = old->cell[i];
 					lispval* child = clone_lispval(temp_child);
@@ -314,6 +314,7 @@ lispval* clone_lispval(lispval* old)
 
 lispval* pop_lispval(lispval* v, int i)
 {
+	  LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function head passed too many arguments");
     lispval* r = v->cell[i];
     /* Shift memory after the item at "i" over the top */
     memmove(&v->cell[i], &v->cell[i + 1],
@@ -329,6 +330,7 @@ lispval* pop_lispval(lispval* v, int i)
 
 lispval* take_lispval(lispval* v, int i)
 { // Unneeded.
+	  LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function head passed too many arguments");
     lispval* x = pop_lispval(v, i);
     delete_lispval(v);
     return x;
@@ -337,17 +339,17 @@ lispval* take_lispval(lispval* v, int i)
 // Operations
 // Ops for q-expressions
 lispval* builtin_head(lispval* v){
-  printf("Entering builtin_head with v->count = %d and v->cell[0]->type = %d\n", v->count, v->cell[0]->type);
+  // printf("Entering builtin_head with v->count = %d and v->cell[0]->type = %d\n", v->count, v->cell[0]->type);
 	// head { 1 2 3 }
 	// But actually, that gets processd into head ({ 1 2 3 }), hence the v->cell[0]->cell[0];
 	LISPVAL_ASSERT(v->count == 1, "Error: function head passed too many arguments");
 	LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to head is not a q-expr, i.e., a bracketed list.");
   LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to head is {}");
-  printf("Passed assertions, v->cell[0]->count = %d\n", v->cell[0]->count);
+  // printf("Passed assertions, v->cell[0]->count = %d\n", v->cell[0]->count);
   // print_lispval_parenthesis(v);
-	print_lispval_parenthesis(v->cell[0]);
+	// print_lispval_parenthesis(v->cell[0]);
 	lispval* result = clone_lispval(v->cell[0]); 
-  printf("Cloned lispval, result->type = %d\n", result->type);
+  // printf("Cloned lispval, result->type = %d\n", result->type);
 	// lispval* result = pop_lispval(v->cell[0], 0); 
   // ^ also possible
 	// A bit unclear. Pop seems like it would depend on the size of the array. clone depends on the sie of head.
