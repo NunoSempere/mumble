@@ -124,6 +124,7 @@ lispval* lispval_qexpr(void)
 // Destructor
 void delete_lispval(lispval* v)
 {
+	  if(v == NULL) return;
     switch (v->type) {
     case LISPVAL_NUM:
         if(VERBOSE) printf("\nFreed num");
@@ -202,6 +203,7 @@ lispval* get_from_lispenv(char* sym, lispenv* env){
 	for(int i=0; i<env->count; i++){
 		if(strcmp(env->syms[i], sym) == 0){
 			return clone_lispval(env->vals[i]);
+			// return env->vals[i];
 		}
 	}
 	return lispval_err("Error: unbound symbol");
@@ -652,26 +654,39 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 
 	  // Check if this is a symbol
 		if(l->type == LISPVAL_SYM){
-			get_from_lispenv(l->sym, env);
+			// Unclear how I want to structure this so as to not get memory errors.
+			return get_from_lispenv(l->sym, env);
 		}
 
 		// Evaluate the children if needed
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_SEXPR || l->cell[i]->type == LISPVAL_SYM) {
-            l->cell[i] = evaluate_lispval(l->cell[i], env);
+            // l->cell[i] = 
+						lispval* new = evaluate_lispval(l->cell[i], env);
+						delete_lispval(l->cell[i]);
+						l->cell[i] = new;
         }
     }
     // Check if any are errors.
+		lispval* err = NULL;
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_ERR) {
-            return clone_lispval(l->cell[i]);
+            err = clone_lispval(l->cell[i]);
         }
     }
+		if (err != NULL){
+			/*
+			 for (int i = 0; i < l->count; i++) {
+				delete_lispval(l->cell[i]);
+			}
+			*/
+			return err;
+		}
 
     // Check if the first element is an operation.
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_FUNC)) {
         lispval* temp = clone_lispval(l->cell[0]);
-        lispval* f = pop_lispval(l, 0);
+        lispval* f = pop_lispval(temp, 0);
         lispval* operands = temp;
         // lispval* operation = clone_lispval(l->cell[0]);
         // lispval* operands = lispval_sexpr();
@@ -756,6 +771,9 @@ int main(int argc, char** argv)
                 }
                 delete_lispval(l);
                 delete_lispval(answer);
+
+								// Clean up environment
+								destroy_lispenv(env);
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
