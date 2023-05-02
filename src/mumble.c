@@ -16,11 +16,12 @@
 // Types: Forward declarations
 // I don't understand how this works
 // and in particular why lispval is repeated twice after the typedef struct
+// See: <https://buildyourownlisp.com/chapter11_variables>
+// <https://web.archive.org/web/20230226023546/https://buildyourownlisp.com/chapter11_variables>
 struct lispval;
 struct lispenv;
 typedef struct lispval lispval;
 typedef struct lispenv lispenv;
-
 
 typedef lispval*(*lispbuiltin)(lispenv*, lispval*); 
 // this defines the lispbuiltin type
@@ -164,6 +165,68 @@ void delete_lispval(lispval* v)
     if (v != NULL)
         free(v);
     v = NULL;
+}
+
+// Environment
+struct lispenv {
+  int count;
+  char** syms; // list of strings
+  lispval** vals; // list of pointers to vals
+};
+
+lispenv* new_lispenv(){
+	lispenv* n = malloc(sizeof(lispenv));
+	n->count = 0;
+	n->syms = NULL;
+	n->vals = NULL;
+	return n;
+}
+
+void destroy_lispenv(lispenv* env){
+	for(int i=0; i< env->count; i++){
+		free(env->syms[i]);
+		free(env->vals[i]);
+		env->syms[i] = NULL;
+		env->vals[i] = NULL;
+	}
+	free(env->syms);
+	env->syms = NULL;
+	free(env->vals);
+	env->vals = NULL;
+	free(env);
+	env = NULL;
+}
+
+lispval* clone_lispval(lispval* old);
+lispval* get_from_lispenv(char* sym, lispenv* env){
+	for(int i=0; i<env->count; i++){
+		if(strcmp(env->syms[i], sym) == 0){
+			return clone_lispval(env->vals[i]);
+		}
+	}
+	return lispval_err("Error: unbound symbol");
+}
+
+void insert_in_lispenv(char* sym, lispval* v, lispenv* env){
+	int found = 0;
+	for(int i=0; i<env->count; i++){
+		if(strcmp(env->syms[i], sym) == 0){
+			delete_lispval(env->vals[i]);
+			env->vals[i] = clone_lispval(v);
+			found = 1;
+		}
+	}
+	if(found == 0){
+		// Expand memory *for the arrays*
+		env->count++;
+		env->syms = realloc(env->syms, sizeof(char*) * env->count);
+		env->vals = realloc(env->vals, sizeof(lispval*) * env->count);
+		
+		// Copy contents over
+		env->vals[env->count - 1] = clone_lispval(v);
+		env->syms[env->count - 1] = malloc(strlen(sym) + 1);
+		strcpy(env->syms[env->count - 1], sym);
+	}
 }
 
 // Read ast into a lispval object
@@ -467,8 +530,8 @@ lispval* builtin_len(lispval* v)
     // Returns something that doesn't share pointers with the input: yes.
 }
 
-lispval* evaluate_lispval(lispval* l);
-lispval* builtin_eval(lispval* v)
+lispval* evaluate_lispval(lispval* l, lispenv* env);
+lispval* builtin_eval(lispval* v, lispenv* env)
 {
     // eval { + 1 2 3 }
     // not sure how this will end up working, but we'll see
@@ -477,7 +540,7 @@ lispval* builtin_eval(lispval* v)
     LISPVAL_ASSERT(old->type == LISPVAL_QEXPR, "Error: Argument passed to eval is not a q-expr, i.e., a bracketed list.");
     lispval* temp = clone_lispval(old);
     temp->type = LISPVAL_SEXPR;
-    lispval* answer = evaluate_lispval(temp);
+    lispval* answer = evaluate_lispval(temp, env);
     delete_lispval(temp);
     return answer;
     // Returns something that should be freed later: probably.
@@ -557,7 +620,7 @@ lispval* builtin_math_ops(char* op, lispval* v)
 }
 
 // Aggregate both math and operations over lists
-lispval* builtin_functions(char* func, lispval* v)
+lispval* builtin_functions(char* func, lispval* v, lispenv* env)
 {
     if (strcmp("list", func) == 0) {
         return builtin_list(v);
@@ -568,7 +631,7 @@ lispval* builtin_functions(char* func, lispval* v)
     } else if (strcmp("join", func) == 0) {
         return builtin_join(v);
     } else if (strcmp("eval", func) == 0) {
-        return builtin_eval(v);
+        return builtin_eval(v, env);
     } else if (strcmp("len", func) == 0) {
         return builtin_len(v);
     } else if (strstr("+-/*", func)) {
@@ -581,15 +644,19 @@ lispval* builtin_functions(char* func, lispval* v)
 }
 
 // Evaluate the lispval
-lispval* evaluate_lispval(lispval* l)
+lispval* evaluate_lispval(lispval* l, lispenv* env)
 {
+	  // Check if this is a symbol
+		if(l->type == LISPVAL_SYM){
+			get_from_lispenv(l->sym, env);
+		}
     // Check if this is an s-expression
     if (l->type != LISPVAL_SEXPR)
         return l;
     // Evaluate the children if needed
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_SEXPR) {
-            l->cell[i] = evaluate_lispval(l->cell[i]);
+            l->cell[i] = evaluate_lispval(l->cell[i], env);
         }
     }
     // Check if any are errors.
@@ -609,7 +676,7 @@ lispval* evaluate_lispval(lispval* l)
         // for (int i = 1; i < l->count; i++) {
         //    lispval_append_child(operands, l->cell[i]);
         // }
-        lispval* answer = builtin_functions(operation->sym, l);
+        lispval* answer = builtin_functions(operation->sym, l, env);
         delete_lispval(operation);
         delete_lispval(operands);
         return answer;
@@ -674,7 +741,11 @@ int main(int argc, char** argv)
                     printf("\nParenthesis printing: ");
                     print_lispval_parenthesis(l);
                 }
-                lispval* answer = evaluate_lispval(l);
+								// Create an environment
+								lispenv* env = new_lispenv();
+
+								// Eval the lispval in that environment.
+                lispval* answer = evaluate_lispval(l, env);
                 {
                     printf("\n\nResult: ");
                     print_lispval_parenthesis(answer);
