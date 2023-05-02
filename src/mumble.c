@@ -12,22 +12,43 @@
     }
 
 // Types
-typedef struct lispval {
-    int type;
-    double num;
-    char* err;
-    char* sym;
-    int count;
-    struct lispval** cell; // list of lisval*
-} lispval;
+
+// Types: Forward declarations
+// I don't understand how this works
+// and in particular why lispval is repeated twice after the typedef struct
+struct lispval;
+struct lispenv;
+typedef struct lispval lispval;
+typedef struct lispenv lispenv;
+
+
+typedef lispval*(*lispbuiltin)(lispenv*, lispval*); 
+// this defines the lispbuiltin type
+// which seems to be a pointer to a function which takes in a lispenv*
+// and a lispval* and returns a lispval*
+
+// Types: Actual types
 
 enum {
     LISPVAL_NUM,
     LISPVAL_ERR,
     LISPVAL_SYM,
+    LISPVAL_FUNC,
     LISPVAL_SEXPR,
     LISPVAL_QEXPR,
 };
+
+typedef struct lispval {
+    int type;
+    double num;
+    char* err;
+    char* sym;
+		lispbuiltin func;
+		char* funcname;
+    int count;
+    struct lispval** cell; // list of lisval*
+} lispval;
+
 
 enum {
     LISPERR_DIV_ZERO,
@@ -65,6 +86,17 @@ lispval* lispval_sym(char* symbol)
     v->count = 0;
     v->sym = malloc(strlen(symbol) + 1);
     strcpy(v->sym, symbol);
+    return v;
+}
+
+lispval* lispval_func(lispbuiltin func, char* funcname){
+    if(VERBOSE) printf("\nAllocated sym");
+    lispval* v = malloc(sizeof(lispval));
+    v->type = LISPVAL_FUNC;
+    v->count = 0;
+    v->sym = malloc(strlen(funcname) + 1);
+    strcpy(v->funcname, funcname);
+		v->func = func;
     return v;
 }
 
@@ -107,6 +139,15 @@ void delete_lispval(lispval* v)
             free(v->sym);
         v->sym = NULL;
         break;
+		case LISPVAL_FUNC:
+        if(VERBOSE) printf("\nFreed func");
+        if (v->funcname != NULL)
+            free(v->funcname);
+        v->funcname = NULL;
+				// Don't do anything with v->func for now
+				// Though we could delete the pointer to the function later
+				// free(v->func);
+				break;
     case LISPVAL_SEXPR:
     case LISPVAL_QEXPR:
         if(VERBOSE) printf("\nFreed s/qexpr");
@@ -247,6 +288,9 @@ void print_lispval_parenthesis(lispval* v)
     case LISPVAL_SYM:
         printf("%s ", v->sym);
         break;
+    case LISPVAL_FUNC:
+        printf("<function name: %s pointer: %p>", v->funcname, v->func);
+        break;
     case LISPVAL_SEXPR:
         printf("( ");
         for (int i = 0; i < v->count; i++) {
@@ -301,6 +345,9 @@ lispval* clone_lispval(lispval* old)
         break;
     case LISPVAL_SYM:
         new = lispval_sym(old->sym);
+        break;
+    case LISPVAL_FUNC:
+        new = lispval_func(old->func, old->funcname);
         break;
     case LISPVAL_SEXPR:
         new = lispval_sexpr();
