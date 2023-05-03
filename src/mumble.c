@@ -596,7 +596,7 @@ lispval* builtin_list(lispval* v, lispenv* e)
 
 lispval* builtin_len(lispval* v, lispenv* e)
 {
-    // tail { 1 2 3 }
+    // len { 1 2 3 }
     LISPVAL_ASSERT(v->count == 1, "Error: function len passed too many arguments");
 
     lispval* source = v->cell[0];
@@ -960,7 +960,8 @@ int main(int argc, char** argv)
         print_lispval_tree(env->vals[0], 2);
     if (VERBOSE)
         printfln("\n");
-    // Initialize a repl
+
+		// Initialize a repl
     int loop = 1;
     while (loop) {
         char* input = readline("mumble> ");
@@ -1007,11 +1008,12 @@ int main(int argc, char** argv)
                 }
                 delete_lispval(answer);
                 if (VERBOSE > 1)
-                    printfln("Answer after deletion: %p", answer);
+                    printfln("variable \"answer\" after deletion: %p", answer);
                 // delete_lispval(answer); // do this twice, just to see.
                 //if(VERBOSE) printfln("Deleting this lispval:");
                 // if(VERBOSE) print_lispval_tree(l,2);
-                delete_lispval(l);
+
+								// delete_lispval(l);
                 // if(VERBOSE) printfln("Deleted that ^ lispval");
                 // ^ I do not understand how the memory in l is freed.
                 // delete the ast
