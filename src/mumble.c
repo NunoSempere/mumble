@@ -815,6 +815,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 				// builtin_functions(operation->sym, l, env);
         delete_lispval(f);
         delete_lispval(operands);
+				// delete_lispval(temp);
 				if(VERBOSE) printfln("Returning");
         return answer;
     }
@@ -921,10 +922,12 @@ int main(int argc, char** argv)
                 delete_lispval(l);
 								// if(VERBOSE) printfln("Deleted that ^ lispval");
 								// ^ I do not understand how the memory in l is freed.
+							  // delete the ast
+								mpc_ast_delete(ast);
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
-                // mpc_err_delete(result.error);
+                mpc_err_delete(result.error);
             }
             add_history(input);
             // can't add if input is NULL

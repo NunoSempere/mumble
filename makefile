@@ -6,8 +6,8 @@
 # make uninstall
 
 ## C compiler
-CC=tcc # much faster compilation than gcc
-COMPILER_FLAGS=#-g3 -Wall -Wextra -Wconversion -Wdouble-promotion -Wno-unused-parameter -Wno-unused-function -Wno-sign-conversion -fsanitize=undefined 
+CC=gcc # much faster compilation than gcc
+COMPILER_FLAGS=#-Wall -Wextra -Wconversion -Wdouble-promotion -Wno-unused-parameter -Wno-unused-function -Wno-sign-conversion -fsanitize=undefined # -g3 
 # exclude: -fsanitize-trap, because I'm using an old version of gcc and couldn't bother getting a new one.
 ## ^ from <https://nullprogram.com/blog/2023/04/29/>
 ## <https://news.ycombinator.com/item?id=35758898>
@@ -35,8 +35,12 @@ STYLE_BLUEPRINT=webkit
 FORMATTER=clang-format -i -style=$(STYLE_BLUEPRINT)
 
 build: $(SRC)
-	$(CC) $(COMPILER_FLAGS)  $(INCS) $(SRC) $(MPC) -o mumble $(LIBS)
+	$(CC) $(COMPILER_FLAGS)  $(INCS) $(SRC) $(MPC) -o mumble $(LIBS) $(DEBUG)
 
 format: $(SRC)
 	$(FORMATTER) $(SRC)
 
+debug: 
+	gcc -I/usr/include/editline ./src/mumble.c ./src/mpc/mpc.c -o mumble -lm -ledit -g
+	# valgrind --tool=memcheck --leak-check=yes  --show-leak-kinds=all ./mumble
+	valgrind --tool=memcheck --leak-check=yes ./mumble
