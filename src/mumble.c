@@ -816,7 +816,11 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         printfln("Checking if this is a symbol");
     if (l->type == LISPVAL_SYM) {
         // Unclear how I want to structure this so as to not get memory errors.
-        return get_from_lispenv(l->sym, env);
+        lispval* answer = get_from_lispenv(l->sym, env);
+				delete_lispval(l); 
+				// fixes memory bug! I guess that if I just return get_from_lispenv,
+				// then it gets lost along the way? Not sure.
+				return answer;
     }
 
     // Evaluate the children if needed
