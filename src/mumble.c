@@ -196,17 +196,28 @@ void delete_lispval(lispval* v)
     case LISPVAL_QEXPR:
         if (VERBOSE)
             printfln("Freeing sexpr|qexpr");
-        if (v == NULL || v->count != 0)
-            return;
+        // if (v == NULL || v->count != 0)
+        //    return;
+        if (VERBOSE)
+            printfln("Freed sexpr|qexpr cells");
         for (int i = 0; i < v->count; i++) {
             if (v->cell[i] != NULL)
                 delete_lispval(v->cell[i]);
             v->cell[i] = NULL;
         }
+        if (VERBOSE)
+            printfln("Setting v->count to 0");
         v->count = 0;
+
+        if (VERBOSE)
+            printfln("Freeing v->cell");
         if (v->cell != NULL)
             free(v->cell);
         v->cell = NULL;
+
+
+        if (VERBOSE)
+            printfln("Freeing the v pointer");
         if (v != NULL)
             free(v);
         if (VERBOSE)
