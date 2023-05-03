@@ -76,3 +76,6 @@ This doesn't currently run on Windows. But it easily could, with [preprocessor s
 
 ## Usage and licensing
 
+I don't expect this project to be such that people might want to use it. If you want a
+
+But for the eventuality, this code is licensed under the MIT license; see the license.txt file.
