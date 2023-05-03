@@ -74,4 +74,5 @@ mumble> VERBOSITY=2
 
 This doesn't currently run on Windows. But it easily could, with [preprocessor statements from the book].
 
+## Usage and licensing
 
