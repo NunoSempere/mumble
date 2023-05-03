@@ -9,7 +9,7 @@
     if (!(cond)) {                \
         return lispval_err(err);  \
     }
-int VERBOSE = 0;
+int VERBOSE = 2;
 #define printfln(...) do { \
     if(VERBOSE == 2) { \
 			printf ("\n@ %s (%d): ", __FILE__, __LINE__); \
@@ -136,9 +136,11 @@ void delete_lispval(lispval* v)
 {
 	  if(v == NULL) return;
 		// print_lispval_tree(v, 0);
+		if(VERBOSE) printfln("\nDeleting object of type %i",v->type);
     switch (v->type) {
     case LISPVAL_NUM:
         if(VERBOSE) printfln("Freeing num");
+				if (v != NULL) free(v);
         if(VERBOSE) printfln("Freed num");
         break;
     case LISPVAL_ERR:
@@ -146,6 +148,7 @@ void delete_lispval(lispval* v)
         if (v->err != NULL)
             free(v->err);
         v->err = NULL;
+				if (v != NULL) free(v);
         if(VERBOSE) printfln("Freed err");
         break;
     case LISPVAL_SYM:
@@ -153,6 +156,7 @@ void delete_lispval(lispval* v)
         if (v->sym != NULL)
             free(v->sym);
         v->sym = NULL;
+				if (v != NULL) free(v);
         if(VERBOSE) printfln("Freed sym");
         break;
 		case LISPVAL_FUNC:
@@ -160,6 +164,7 @@ void delete_lispval(lispval* v)
         if (v->funcname != NULL)
             free(v->funcname);
         v->funcname = NULL;
+				if (v != NULL) free(v);
         if(VERBOSE) printfln("Freed func");
 				// Don't do anything with v->func for now
 				// Though we could delete the pointer to the function later
@@ -168,22 +173,23 @@ void delete_lispval(lispval* v)
     case LISPVAL_SEXPR:
     case LISPVAL_QEXPR:
         if(VERBOSE) printfln("Freeing sexpr|qexpr");
+				if(v==NULL || v->count !=0) return;
         for (int i = 0; i < v->count; i++) {
             if (v->cell[i] != NULL)
                 delete_lispval(v->cell[i]);
             v->cell[i] = NULL;
         }
+				v->count = 0;
         if (v->cell != NULL)
             free(v->cell);
         v->cell = NULL;
+				if (v != NULL) free(v);
         if(VERBOSE) printfln("Freed sexpr|qexpr");
         break;
 		default: 
-        if(VERBOSE) printfln("Error: Unknown expression type.");
+        if(VERBOSE) printfln("Error: Unknown expression type for pointer %p of type %i", v, v->type);
     }
-    if (v != NULL)
-        free(v);
-    v = NULL;
+    // v = NULL; this is only our local pointer, sadly.
 }
 
 // Environment
@@ -718,7 +724,7 @@ void lispenv_add_builtin(char* funcname, lispbuiltin func, lispenv* env ){
 	lispval* f = lispval_func(func, funcname);
 	if(VERBOSE) print_lispval_tree(f, 0);
 	insert_in_lispenv(funcname, f,env);
-	// delete_lispval(f);
+	delete_lispval(f);
 }
 void lispenv_add_builtins(lispenv* env){
    // Math functions
@@ -907,13 +913,18 @@ int main(int argc, char** argv)
                     if(VERBOSE) print_lispval_tree(answer, 0);
 										printf("\n");
                 }
-								// ^ I do not understand how the memory in l is freed.
                 delete_lispval(answer);
-                // delete_lispval(l);
+								if(VERBOSE > 1) printfln("Answer after deletion: %p", answer);
+                // delete_lispval(answer); // do this twice, just to see.
+								//if(VERBOSE) printfln("Deleting this lispval:");
+								// if(VERBOSE) print_lispval_tree(l,2);
+                delete_lispval(l);
+								// if(VERBOSE) printfln("Deleted that ^ lispval");
+								// ^ I do not understand how the memory in l is freed.
             } else {
                 /* Otherwise Print the Error */
                 mpc_err_print(result.error);
-                mpc_err_delete(result.error);
+                // mpc_err_delete(result.error);
             }
             add_history(input);
             // can't add if input is NULL
@@ -925,8 +936,6 @@ int main(int argc, char** argv)
 
 		// Clean up environment
 		destroy_lispenv(env);
-								// Clean up environment
-								destroy_lispenv(env);
 
     /* Undefine and Delete our Parsers */
     mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Mumble);
