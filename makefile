@@ -20,7 +20,7 @@ SRC=./src/mumble.c
 MPC=./src/mpc/mpc.c
 
 ## Dependencies
-DEPS_PC=libedit
+DEPS_PC=libeditline #libedit: an older version
 # ^ libm, which doesn't have files which pkg-config can find, grr.
 DEBUG= #'-g'
 
@@ -41,6 +41,6 @@ format: $(SRC)
 	$(FORMATTER) $(SRC)
 
 debug: 
-	gcc -I/usr/include/editline ./src/mumble.c ./src/mpc/mpc.c -o mumble -lm -ledit -g
-	# valgrind --tool=memcheck --leak-check=yes  --show-leak-kinds=all ./mumble
-	valgrind --tool=memcheck --leak-check=yes ./mumble
+	gcc -I/usr/include/editline ./src/mumble.c ./src/mpc/mpc.c -o mumble -lm -leditline -g
+	valgrind --tool=memcheck --leak-check=yes  --show-leak-kinds=all ./mumble
+	# valgrind --tool=memcheck --leak-check=yes ./mumble

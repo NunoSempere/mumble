@@ -1,5 +1,6 @@
-#include <editline/history.h>
-#include <editline/readline.h>
+// #include <editline/history.h>
+// #include <editline/readline.h>
+#include <editline.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +17,7 @@ int VERBOSE = 2;
             printf("\n@ %s (%d): ", __FILE__, __LINE__); \
             printf(__VA_ARGS__);                         \
         } else {                                         \
-            printf("\n");                                \
+            printf("%s", "\n");                                \
             printf(__VA_ARGS__);                         \
         }                                                \
     } while (0)
@@ -807,7 +808,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         printfln("Evaluating lispval");
     // Check if this is neither an s-expression nor a symbol; otherwise return as is.
     if (VERBOSE)
-        printfln("");
+			printfln("%s", "");
     if (l->type != LISPVAL_SEXPR && l->type != LISPVAL_SYM)
         return l;
 
@@ -825,18 +826,18 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 
     // Evaluate the children if needed
     if (VERBOSE)
-        printfln("Evaluating children");
+        printfln("%s", "Evaluating children");
     for (int i = 0; i < l->count; i++) {
         if (l->cell[i]->type == LISPVAL_SEXPR || l->cell[i]->type == LISPVAL_SYM) {
             // l->cell[i] =
             if (VERBOSE)
-                printfln("");
+                printfln("%s", "");
             lispval* new = evaluate_lispval(l->cell[i], env);
             // delete_lispval(l->cell[i]);
             // ^ gave me a "double free" error.
             l->cell[i] = new;
             if (VERBOSE)
-                printfln("");
+                printfln("%s", "");
         }
     }
     // Check if any are errors.
@@ -918,8 +919,8 @@ void modify_verbosity(char* command)
 int main(int argc, char** argv)
 {
     // Info
-    puts("Mumble version 0.0.2\n");
-    puts("Press Ctrl+C to exit\n");
+    printfln("%s", "Mumble version 0.0.2\n");
+    printfln("%s", "Press Ctrl+C to exit\n");
 
     /* Create Some Parsers */
     mpc_parser_t* Number = mpc_new("number");
@@ -967,6 +968,7 @@ int main(int argc, char** argv)
         if (input == NULL) {
             // ^ catches Ctrl+D
             loop = 0;
+
         } else {
             /* Attempt to Parse the user Input */
             mpc_result_t result;
@@ -1022,11 +1024,14 @@ int main(int argc, char** argv)
             add_history(input);
             // can't add if input is NULL
         }
-        puts("");
+        printf("%s", "");
         free(input);
         input = NULL;
     }
 
+		// Clear the history
+		rl_uninitialize();
+		// rl_free_line_state();
     // Clean up environment
     destroy_lispenv(env);
 
