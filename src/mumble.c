@@ -865,17 +865,6 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 					lispval_append_child(operands, l->cell[i]);
 
 				}
-				/*
-        lispval* temp = clone_lispval(l);
-        lispval* f = pop_lispval(temp, 0);
-        // pop is destructive.
-        lispval* operands = temp;
-				*/
-        // lispval* operation = clone_lispval(l->cell[0]);
-        // lispval* operands = lispval_sexpr();
-        // for (int i = 1; i < l->count; i++) {
-        //    lispval_append_child(operands, l->cell[i]);
-        // }
         if (VERBOSE)
             printfln("Applying function to operands");
         // lispval* answer = lispval_num(42);
