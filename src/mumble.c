@@ -856,12 +856,21 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         if (VERBOSE)
             print_lispval_tree(l, 4);
 
+				// Ok, do this properly now.
+        if (VERBOSE)
+            printfln("Constructing function and operands");
+				lispval* f  = clone_lispval(l->cell[0]);
+				lispval* operands = lispval_sexpr();
+				for(int i=1; i<l->count; i++){
+					lispval_append_child(operands, l->cell[i]);
+
+				}
+				/*
         lispval* temp = clone_lispval(l);
         lispval* f = pop_lispval(temp, 0);
         // pop is destructive.
         lispval* operands = temp;
-        if (VERBOSE)
-            printfln("Allocated memory");
+				*/
         // lispval* operation = clone_lispval(l->cell[0]);
         // lispval* operands = lispval_sexpr();
         // for (int i = 1; i < l->count; i++) {
@@ -871,17 +880,17 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
             printfln("Applying function to operands");
         // lispval* answer = lispval_num(42);
         lispval* answer = f->func(operands, env);
-
         if (VERBOSE)
             printfln("Applied function to operands");
-        if (VERBOSE)
+        
+				if (VERBOSE)
             printfln("Cleaning up");
         // builtin_functions(operation->sym, l, env);
         delete_lispval(f);
         delete_lispval(operands);
         // delete_lispval(temp);
         if (VERBOSE)
-            printfln("Returning");
+            printfln("Cleaned up. Returning");
         return answer;
     }
     return l;
