@@ -226,17 +226,17 @@ void delete_lispval(lispval* v)
         if (VERBOSE)
             printfln("Freeing user-defined func");
         if (v->env != NULL) {
-            destroy_lispenv(v->env);
+            // destroy_lispenv(v->env);
             free(v->env);
             v->env = NULL;
         }
         if (v->variables != NULL) {
-            delete_lispval(v->variables);
+            // delete_lispval(v->variables);
             free(v->variables);
             v->variables = NULL;
         }
         if (v->manipulation != NULL) {
-            delete_lispval(v->manipulation);
+            // delete_lispval(v->manipulation);
             free(v->manipulation);
             v->manipulation = NULL;
         }
@@ -334,6 +334,8 @@ lispval* get_from_lispenv(char* sym, lispenv* env)
     if (env->parent != NULL) {
         return get_from_lispenv(sym, env->parent);
     } else {
+        if (VERBOSE)
+            printfln("Unbound symbol %s", sym);
         return lispval_err("Error: unbound symbol");
     }
     // and this explains shadowing!
@@ -460,6 +462,14 @@ lispval* read_lispval(mpc_ast_t* t)
 }
 
 // Print
+void print_env(lispenv* env)
+{
+    printfln("Environment: ");
+    for (int i = 0; i < env->count; i++) {
+        printfln("Value for symbol %s: ", env->syms[i]);
+        print_lispval_tree(env->vals[i], 2);
+    }
+}
 void print_lispval_tree(lispval* v, int indent_level)
 {
     char* indent = malloc(sizeof(char) * (indent_level + 1));
@@ -729,7 +739,7 @@ lispval* builtin_def(lispval* v, lispenv* env)
     LISPVAL_ASSERT(source->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
     LISPVAL_ASSERT(source->count == 2, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
     LISPVAL_ASSERT(source->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
-    LISPVAL_ASSERT(source->cell[1]->type == LISPVAL_QEXPR, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
+    LISPVAL_ASSERT(source->cell[1]->type == LISPVAL_QEXPR || source->cell[1]->type == LISPVAL_SEXPR, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
     LISPVAL_ASSERT(source->cell[0]->count == source->cell[1]->count, "Error: In function \"def\" both subarguments should have the same length");
 
     lispval* symbols = source->cell[0];
@@ -930,7 +940,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 
     // Check if the first element is an operation.
     if (VERBOSE)
-        printfln("Checking is first element is a function");
+        printfln("Checking if first element is a function");
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_BUILTIN_FUNC)) {
 
         if (VERBOSE)
@@ -943,8 +953,10 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         // Ok, do this properly now.
         if (VERBOSE)
             printfln("Constructing function and operands");
+
         lispval* f = clone_lispval(l->cell[0]);
         lispval* operands = lispval_sexpr();
+
         for (int i = 1; i < l->count; i++) {
             lispval_append_child(operands, l->cell[i]);
         }
@@ -966,22 +978,37 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
     }
 
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_USER_FUNC)) {
-        // Do something with user-defined functions here
+        if (VERBOSE)
+            printfln("Evaluating user-defined function");
+
         lispval* f = clone_lispval(l->cell[0]);
+        f->env->parent = env;
 
-        // check whether function takes as many arguments as given
         LISPVAL_ASSERT(f->variables->count == (l->count - 1), "Error: Incorrect number of variables given to user-defined function");
+        if (VERBOSE)
+            printfln("Number of variables match");
 
-        for (int i = 1; i < l->count; i++) {
-            // lispval_append_child(operands, l->cell[i]);
-            insert_in_current_lispenv(
-                f->variables->cell[i]->sym, l->cell[i], f->env);
+        if (VERBOSE) {
+            printfln("Function vars:");
+            print_lispval_tree(f->variables, 2);
+            printfln("Function manipulation:");
+            print_lispval_tree(f->manipulation, 2);
         }
-        lispval* answer = evaluate_lispval(f->manipulation, f->env);
-        destroy_lispenv(f->env);
-        return answer;
 
-        // return lispval_err("Error: User-defined functions not yet implemented");
+        for (int i = 0; i < f->variables->count; i++) {
+            insert_in_current_lispenv(f->variables->cell[i]->sym, l->cell[i + 1], f->env);
+        }
+        if (VERBOSE) {
+            printfln("User defined function environment: ");
+            print_env(f->env);
+        }
+        lispval* temp = clone_lispval(f->manipulation);
+        temp->type = LISPVAL_SEXPR;
+        lispval* answer = evaluate_lispval(temp, f->env);
+        // lispval* answer = builtin_eval(f->manipulation, f->env);
+        // destroy_lispenv(f->env);
+        return answer;
+        return lispval_err("Error: User-defined functions not yet implemented");
     }
 
     return l;
@@ -1099,7 +1126,7 @@ int main(int argc, char** argv)
                 }
                 delete_lispval(answer);
                 if (VERBOSE > 1)
-                    printfln("variable \"answer\" after deletion: %p", answer);
+                    printfln("variable \"answer\" after deletion: %p ", answer);
                 // delete_lispval(answer); // do this twice, just to see.
                 //if(VERBOSE) printfln("Deleting this lispval:");
                 // if(VERBOSE) print_lispval_tree(l,2);
