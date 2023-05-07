@@ -286,15 +286,17 @@ struct lispenv {
     int count;
     char** syms; // list of strings
     lispval** vals; // list of pointers to vals
+    lispenv* parent;
 };
 
 lispenv* new_lispenv()
 {
-    lispenv* n = malloc(sizeof(lispenv));
-    n->count = 0;
-    n->syms = NULL;
-    n->vals = NULL;
-    return n;
+    lispenv* e = malloc(sizeof(lispenv));
+    e->count = 0;
+    e->syms = NULL;
+    e->vals = NULL;
+		e->parent = NULL;
+    return e;
 }
 
 void destroy_lispenv(lispenv* env)
@@ -311,7 +313,11 @@ void destroy_lispenv(lispenv* env)
     env->vals = NULL;
     free(env);
     env = NULL;
+    // parent is it's own environment
+		// so it isn't destroyed
 }
+
+
 
 lispval* clone_lispval(lispval* old);
 lispval* get_from_lispenv(char* sym, lispenv* env)
@@ -322,7 +328,13 @@ lispval* get_from_lispenv(char* sym, lispenv* env)
             // return env->vals[i];
         }
     }
-    return lispval_err("Error: unbound symbol");
+
+		if(env->parent != NULL){
+			return get_from_lispenv(sym, env->parent);
+		} else {
+			return lispval_err("Error: unbound symbol");
+		}
+		// and this explains shadowing!
 }
 
 void insert_in_lispenv(char* sym, lispval* v, lispenv* env)
@@ -739,6 +751,9 @@ lispval* builtin_def(lispval* v, lispenv* env)
 // A builtin for defining a function
 lispval* builtin_define_lambda(lispval* v, lispenv* env){
   // @ { {x y} { + x y } }
+  // def { {plus} {{@ {x y} {+ x y}} }}
+  // (eval plus) 1 2
+	// (@ { {x y} { + x y } }) 1 2
   LISPVAL_ASSERT( v->count == 2, "Lambda definition requires two arguments; try @ { {x y} { + x y } }");
   LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the first sub-arg be a q-expression; try @ { {x y} { + x y } }");
   LISPVAL_ASSERT(v->cell[1]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the second sub-arg be a q-expression; try @ { {x y} { + x y } }");
