@@ -49,6 +49,7 @@ enum {
     LISPVAL_SEXPR,
     LISPVAL_QEXPR,
 };
+int LARGEST_LISPVAL = LISPVAL_QEXPR; // for checking out of bounds.
 
 typedef struct lispval {
     int type;
@@ -167,7 +168,7 @@ lispval* lispval_qexpr(void)
 void print_lispval_tree(lispval* v, int indent_level);
 void delete_lispval(lispval* v)
 {
-    if (v == NULL)
+    if (v == NULL || v->type > LARGEST_LISPVAL)
         return;
     // print_lispval_tree(v, 0);
     if (VERBOSE)
