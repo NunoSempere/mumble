@@ -335,7 +335,7 @@ lispval* get_from_lispenv(char* sym, lispenv* env)
     // and this explains shadowing!
 }
 
-void insert_in_lispenv(char* sym, lispval* v, lispenv* env)
+void insert_in_current_lispenv(char* sym, lispval* v, lispenv* env)
 {
     int found = 0;
     for (int i = 0; i < env->count; i++) {
@@ -358,22 +358,31 @@ void insert_in_lispenv(char* sym, lispval* v, lispenv* env)
     }
 }
 
-lispenv* clone_lispenv(lispenv* origin_env){
+void insert_in_parentmost_lispenv(char* sym, lispval* v, lispenv* env)
+{
+    // note that you could have two chains of envs, though hopefully not.
+    while (env->parent != NULL) {
+        env = env->parent;
+    }
+    insert_in_current_lispenv(sym, v, env);
+}
+
+lispenv* clone_lispenv(lispenv* origin_env)
+{
     lispenv* new_env = malloc(sizeof(lispenv));
     new_env->count = origin_env->count;
     new_env->parent = origin_env->parent;
 
     new_env->syms = malloc(sizeof(char*) * origin_env->count);
     new_env->vals = malloc(sizeof(lispval*) * origin_env->count);
-		
-		for(int i=0;i<origin_env->count; i++){
-			new_env->syms[i] = malloc(strlen(origin_env->syms[i]) + 1);
-			strcpy(new_env->syms[i], origin_env->syms[i]);
-			new_env->vals[i] = clone_lispval(origin_env->vals[i]);
-		}
+
+    for (int i = 0; i < origin_env->count; i++) {
+        new_env->syms[i] = malloc(strlen(origin_env->syms[i]) + 1);
+        strcpy(new_env->syms[i], origin_env->syms[i]);
+        new_env->vals[i] = clone_lispval(origin_env->vals[i]);
+    }
     return new_env;
 }
-
 
 // Read ast into a lispval object
 lispval* lispval_append_child(lispval* parent, lispval* child)
@@ -729,7 +738,7 @@ lispval* builtin_def(lispval* v, lispenv* env)
             print_lispval_tree(values, 0);
         if (VERBOSE)
             printf("\n");
-        insert_in_lispenv(symbols->cell[i]->sym, values->cell[i], env);
+        insert_in_current_lispenv(symbols->cell[i]->sym, values->cell[i], env);
     }
     return lispval_sexpr(); // ()
 }
@@ -774,7 +783,7 @@ lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
             return lispval_err("Error: Non minus unary operation");
         }
     } else if (v->count >= 2) {
-        lispval* x = clone_lispval(v->cell[0]); 
+        lispval* x = clone_lispval(v->cell[0]);
 
         for (int i = 1; i < v->count; i++) {
             lispval* y = v->cell[i];
@@ -834,7 +843,7 @@ void lispenv_add_builtin(char* builtin_func_name, lispbuiltin func, lispenv* env
     lispval* f = lispval_builtin_func(func, builtin_func_name);
     if (VERBOSE)
         print_lispval_tree(f, 0);
-    insert_in_lispenv(builtin_func_name, f, env);
+    insert_in_current_lispenv(builtin_func_name, f, env);
     delete_lispval(f);
 }
 void lispenv_add_builtins(lispenv* env)
