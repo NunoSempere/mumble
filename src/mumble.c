@@ -131,12 +131,12 @@ lispval* lispval_builtin_func(lispbuiltin func, char* builtin_func_name)
 }
 
 lispenv* new_lispenv();
-lispval* lispval_lambda_func(lispval* variables, lispval* manipulation)
+lispval* lispval_lambda_func(lispval* variables, lispval* manipulation, lispenv* env)
 {
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_USER_FUNC;
     v->builtin_func = NULL;
-    v->env = new_lispenv();
+    v->env = (env == NULL ? new_lispenv() : env);
     v->variables = variables;
     v->manipulation = manipulation;
     // unclear how to garbage-collect this. Maybe add to a list and collect at the end?
@@ -223,31 +223,33 @@ void delete_lispval(lispval* v)
         // free(v->func);
         break;
     case LISPVAL_USER_FUNC:
+				// for now, do nothing
+				/*
         if (VERBOSE)
             printfln("Freeing user-defined func");
         if (v->env != NULL) {
             // destroy_lispenv(v->env);
-            free(v->env);
-            v->env = NULL;
+            // free(v->env);
+            //v->env = NULL;
         }
         if (v->variables != NULL) {
-            // delete_lispval(v->variables);
-            free(v->variables);
-            v->variables = NULL;
+						// delete_lispval(v->variables);
+            // v->variables = NULL;
         }
         if (v->manipulation != NULL) {
             // delete_lispval(v->manipulation);
-            free(v->manipulation);
-            v->manipulation = NULL;
+            // free(v->manipulation);
+            // v->manipulation = NULL;
         }
         if (v != NULL)
-            free(v);
+            // free(v);
         if (VERBOSE)
             printfln("Freed user-defined func");
         // Don't do anything with v->func for now
         // Though we could delete the pointer to the function later
         // free(v->func);
-        break;
+        */
+				break;
     case LISPVAL_SEXPR:
     case LISPVAL_QEXPR:
         if (VERBOSE)
@@ -493,6 +495,8 @@ void print_lispval_tree(lispval* v, int indent_level)
         break;
     case LISPVAL_USER_FUNC:
         printfln("%sUser-defined function: %p", indent, v->env); // Identify it with its environment?
+				print_lispval_tree(v->variables, indent_level+2);
+				print_lispval_tree(v->manipulation, indent_level+2);
         break;
     case LISPVAL_SEXPR:
         printfln("%sSExpr, with %d children:", indent, v->count);
@@ -596,7 +600,7 @@ lispval* clone_lispval(lispval* old)
         new = lispval_builtin_func(old->builtin_func, old->builtin_func_name);
         break;
     case LISPVAL_USER_FUNC:
-        new = lispval_lambda_func(old->variables, old->manipulation);
+        new = lispval_lambda_func(old->variables, old->manipulation, old->env);
         break;
     case LISPVAL_SEXPR:
         new = lispval_sexpr();
@@ -608,7 +612,7 @@ lispval* clone_lispval(lispval* old)
         return lispval_err("Error: Cloning element of unknown type.");
     }
 
-    if (old->count > 0 && (old->type == LISPVAL_QEXPR || old->type == LISPVAL_SEXPR)) {
+    if ((old->type == LISPVAL_QEXPR || old->type == LISPVAL_SEXPR) && (old->count > 0) ) {
         for (int i = 0; i < old->count; i++) {
             lispval* temp_child = old->cell[i];
             lispval* child = clone_lispval(temp_child);
@@ -734,7 +738,13 @@ lispval* builtin_join(lispval* l, lispenv* e)
 lispval* builtin_def(lispval* v, lispenv* env)
 {
     // Takes one argument: def { { a b } { 1 2 } }
-    lispval* source = v->cell[0];
+    // Takes two arguments: argument: def {a} 1; def {init} (@ {x y} {x})
+    lispval* symbol_wrapper = v->cell[0];
+		lispval* value = v->cell[1];
+
+		insert_in_current_lispenv(symbol_wrapper->cell[0]->sym, value, env);
+	  lispval* source = v->cell[0];
+    return lispval_sexpr(); // ()
     LISPVAL_ASSERT(v->count == 1, "Error: function def passed too many arguments");
     LISPVAL_ASSERT(source->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
     LISPVAL_ASSERT(source->count == 2, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
@@ -752,7 +762,7 @@ lispval* builtin_def(lispval* v, lispenv* env)
             print_lispval_tree(values, 0);
         if (VERBOSE)
             printf("\n");
-        insert_in_current_lispenv(symbols->cell[i]->sym, values->cell[i], env);
+        insert_in_current_lispenv(symbols->cell[i]->sym, clone_lispval(values->cell[i]), env);
     }
     return lispval_sexpr(); // ()
 }
@@ -775,7 +785,7 @@ lispval* builtin_define_lambda(lispval* v, lispenv* env)
         LISPVAL_ASSERT(variables->cell[i]->type == LISPVAL_SYM, "First argument in function definition must only be symbols. Try @ { {x y} { + x y } }");
     }
 
-    lispval* lambda = lispval_lambda_func(variables, manipulation);
+    lispval* lambda = lispval_lambda_func(variables, manipulation, NULL);
     return lambda;
 }
 // Simple math ops
@@ -978,12 +988,13 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
     }
 
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_USER_FUNC)) {
-        if (VERBOSE)
+        lispval* f = l->cell[0]; // clone_lispval(l->cell[0]);
+        if (VERBOSE){
             printfln("Evaluating user-defined function");
-
-        lispval* f = clone_lispval(l->cell[0]);
+						print_lispval_tree(f, 2);
+						if(VERBOSE) printfln("Expected %d variables, found %d variables.", f->variables->count, l->count -1);
+				}
         f->env->parent = env;
-
         LISPVAL_ASSERT(f->variables->count == (l->count - 1), "Error: Incorrect number of variables given to user-defined function");
         if (VERBOSE)
             printfln("Number of variables match");
