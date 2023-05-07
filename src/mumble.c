@@ -578,30 +578,6 @@ lispval* clone_lispval(lispval* old)
     return new;
 }
 
-lispval* pop_lispval(lispval* v, int i)
-{
-    LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function pop wasn't passed a q-expression or an s-expression arguments");
-    lispval* r = v->cell[i];
-    /* Shift memory after the item at "i" over the top */
-    memmove(&v->cell[i], &v->cell[i + 1],
-        sizeof(lispval*) * (v->count - i - 1));
-
-    /* Decrease the count of items in the list */
-    v->count--;
-
-    /* Reallocate the memory used */
-    v->cell = realloc(v->cell, sizeof(lispval*) * v->count);
-    return r;
-}
-
-lispval* take_lispval(lispval* v, int i)
-{ // Unneeded.
-    LISPVAL_ASSERT(v->type == LISPVAL_QEXPR || v->type == LISPVAL_SEXPR, "Error: function take_lispval passed too many arguments");
-    lispval* x = pop_lispval(v, i);
-    delete_lispval(v);
-    return x;
-}
-
 // Operations
 // Ops for q-expressions
 lispval* builtin_head(lispval* v, lispenv* e)
@@ -613,11 +589,6 @@ lispval* builtin_head(lispval* v, lispenv* e)
     LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to head is not a q-expr, i.e., a bracketed list.");
     LISPVAL_ASSERT(v->cell[0]->count != 0, "Error: Argument passed to head is {}");
     lispval* result = clone_lispval(v->cell[0]->cell[0]);
-    // lispval* result = pop_lispval(v->cell[0], 0);
-    // ^ also possible
-    // A bit unclear. Pop seems like it would depend on the size of the array. clone depends on the sie of head.
-    // either way the original array will soon be deleted, so I could have used pop
-    // but I wanted to write & use clone instead.
     return result;
     // Returns something that should be freed later: yes.
     // Returns something that doesn't share pointers with the input: yes.
@@ -786,7 +757,7 @@ lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
             return lispval_err("Error: Non minus unary operation");
         }
     } else if (v->count >= 2) {
-        lispval* x = clone_lispval(v->cell[0]); // pop_lispval(v, 0);
+        lispval* x = clone_lispval(v->cell[0]); 
 
         for (int i = 1; i < v->count; i++) {
             lispval* y = v->cell[i];
