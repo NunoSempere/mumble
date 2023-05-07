@@ -51,11 +51,22 @@ enum {
 
 typedef struct lispval {
     int type;
-    double num;
+    
+		// Basic types
+		double num;
     char* err;
     char* sym;
-    lispbuiltin func;
-    char* funcname;
+ 
+		// Functions
+		// Built-in
+		lispbuiltin builtin_func;
+    char* builtin_func_name;
+		// User-defined
+		lispenv* env;
+		lispval* variables;
+		lispval* manipulation;
+
+		// Expression
     int count;
     struct lispval** cell; // list of lisval*
 } lispval;
@@ -102,16 +113,16 @@ lispval* lispval_sym(char* symbol)
     return v;
 }
 
-lispval* lispval_func(lispbuiltin func, char* funcname)
+lispval* lispval_builtin_func(lispbuiltin func, char* builtin_func_name)
 {
     if (VERBOSE)
-        printfln("Allocating func name:%s, pointer: %p", funcname, func);
+        printfln("Allocating func name:%s, pointer: %p", builtin_func_name, func);
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_FUNC;
     v->count = 0;
-    v->funcname = malloc(strlen(funcname) + 1);
-    strcpy(v->funcname, funcname);
-    v->func = func;
+    v->builtin_func_name = malloc(strlen(builtin_func_name) + 1);
+    strcpy(v->builtin_func_name, builtin_func_name);
+    v->builtin_func = func;
     if (VERBOSE)
         printfln("Allocated func");
     return v;
@@ -182,9 +193,9 @@ void delete_lispval(lispval* v)
     case LISPVAL_FUNC:
         if (VERBOSE)
             printfln("Freeing func");
-        if (v->funcname != NULL)
-            free(v->funcname);
-        v->funcname = NULL;
+        if (v->builtin_func_name != NULL)
+            free(v->builtin_func_name);
+        v->builtin_func_name = NULL;
         if (v != NULL)
             free(v);
         if (VERBOSE)
@@ -389,7 +400,7 @@ void print_lispval_tree(lispval* v, int indent_level)
         printfln("%sSymbol: %s", indent, v->sym);
         break;
     case LISPVAL_FUNC:
-        printfln("%sFunction, name: %s, pointer: %p", indent, v->funcname, v->func);
+        printfln("%sFunction, name: %s, pointer: %p", indent, v->builtin_func_name, v->builtin_func);
         break;
     case LISPVAL_SEXPR:
         printfln("%sSExpr, with %d children:", indent, v->count);
@@ -429,7 +440,7 @@ void print_lispval_parenthesis(lispval* v)
         printf("%s ", v->sym);
         break;
     case LISPVAL_FUNC:
-        printf("<function, name: %s, pointer: %p> ", v->funcname, v->func);
+        printf("<function, name: %s, pointer: %p> ", v->builtin_func_name, v->builtin_func);
         break;
     case LISPVAL_SEXPR:
         printf("( ");
@@ -487,7 +498,7 @@ lispval* clone_lispval(lispval* old)
         new = lispval_sym(old->sym);
         break;
     case LISPVAL_FUNC:
-        new = lispval_func(old->func, old->funcname);
+        new = lispval_builtin_func(old->builtin_func, old->builtin_func_name);
         break;
     case LISPVAL_SEXPR:
         new = lispval_sexpr();
@@ -773,14 +784,14 @@ lispval* builtin_functions(char* func, lispval* v, lispenv* env)
 }
 
 // Add builtins to an env
-void lispenv_add_builtin(char* funcname, lispbuiltin func, lispenv* env)
+void lispenv_add_builtin(char* builtin_func_name, lispbuiltin func, lispenv* env)
 {
     if (VERBOSE)
-        printfln("Adding func: name: %s, pointer: %p", funcname, func);
-    lispval* f = lispval_func(func, funcname);
+        printfln("Adding func: name: %s, pointer: %p", builtin_func_name, func);
+    lispval* f = lispval_builtin_func(func, builtin_func_name);
     if (VERBOSE)
         print_lispval_tree(f, 0);
-    insert_in_lispenv(funcname, f, env);
+    insert_in_lispenv(builtin_func_name, f, env);
     delete_lispval(f);
 }
 void lispenv_add_builtins(lispenv* env)
@@ -884,7 +895,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         if (VERBOSE)
             printfln("Applying function to operands");
         // lispval* answer = lispval_num(42);
-        lispval* answer = f->func(operands, env);
+        lispval* answer = f->builtin_func(operands, env);
         if (VERBOSE)
             printfln("Applied function to operands");
         
