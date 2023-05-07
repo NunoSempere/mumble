@@ -17,7 +17,7 @@ int VERBOSE = 0;
             printf("\n@ %s (%d): ", __FILE__, __LINE__); \
             printf(__VA_ARGS__);                         \
         } else {                                         \
-            printf("%s", "\n");                                \
+            printf("%s", "\n");                          \
             printf(__VA_ARGS__);                         \
         }                                                \
     } while (0)
@@ -53,22 +53,22 @@ int LARGEST_LISPVAL = LISPVAL_QEXPR; // for checking out of bounds.
 
 typedef struct lispval {
     int type;
-    
-		// Basic types
-		double num;
+
+    // Basic types
+    double num;
     char* err;
     char* sym;
- 
-		// Functions
-		// Built-in
-		lispbuiltin builtin_func;
-    char* builtin_func_name;
-		// User-defined
-		lispenv* env;
-		lispval* variables;
-		lispval* manipulation;
 
-		// Expression
+    // Functions
+    // Built-in
+    lispbuiltin builtin_func;
+    char* builtin_func_name;
+    // User-defined
+    lispenv* env;
+    lispval* variables;
+    lispval* manipulation;
+
+    // Expression
     int count;
     struct lispval** cell; // list of lisval*
 } lispval;
@@ -131,15 +131,16 @@ lispval* lispval_builtin_func(lispbuiltin func, char* builtin_func_name)
 }
 
 lispenv* new_lispenv();
-lispval* lispval_lambda_func(lispval* variables, lispval* manipulation){
-	lispval* v = malloc(sizeof(lispval));
-  v->type = LISPVAL_USER_FUNC;
-	v->builtin_func = NULL;
-	v->env = new_lispenv();
-	v->variables = variables; 	
-	v->manipulation = manipulation; 
-	// unclear how to garbage-collect this. Maybe add to a list and collect at the end?
-  return v;
+lispval* lispval_lambda_func(lispval* variables, lispval* manipulation)
+{
+    lispval* v = malloc(sizeof(lispval));
+    v->type = LISPVAL_USER_FUNC;
+    v->builtin_func = NULL;
+    v->env = new_lispenv();
+    v->variables = variables;
+    v->manipulation = manipulation;
+    // unclear how to garbage-collect this. Maybe add to a list and collect at the end?
+    return v;
 }
 
 lispval* lispval_sexpr(void)
@@ -205,13 +206,13 @@ void delete_lispval(lispval* v)
             printfln("Freed sym");
         break;
     case LISPVAL_BUILTIN_FUNC:
-        if (v->builtin_func_name != NULL){
-					if (VERBOSE){
-							printfln("Freeing builtin func");
-					}
-					free(v->builtin_func_name);
-					v->builtin_func_name = NULL;
-				}
+        if (v->builtin_func_name != NULL) {
+            if (VERBOSE) {
+                printfln("Freeing builtin func");
+            }
+            free(v->builtin_func_name);
+            v->builtin_func_name = NULL;
+        }
         if (v != NULL)
             free(v);
         if (VERBOSE)
@@ -223,18 +224,18 @@ void delete_lispval(lispval* v)
     case LISPVAL_USER_FUNC:
         if (VERBOSE)
             printfln("Freeing user-defined func");
-        if (v->env != NULL){
-        	free(v->env);
-					v->env = NULL;
-				}
-        if (v->variables != NULL){
-        	free(v->variables);
-					v->variables = NULL;
-				}
-        if (v->manipulation != NULL){
-        	free(v->manipulation);
-					v->manipulation = NULL;
-				}
+        if (v->env != NULL) {
+            free(v->env);
+            v->env = NULL;
+        }
+        if (v->variables != NULL) {
+            free(v->variables);
+            v->variables = NULL;
+        }
+        if (v->manipulation != NULL) {
+            free(v->manipulation);
+            v->manipulation = NULL;
+        }
         if (v != NULL)
             free(v);
         if (VERBOSE)
@@ -266,7 +267,6 @@ void delete_lispval(lispval* v)
             free(v->cell);
         v->cell = NULL;
 
-
         if (VERBOSE)
             printfln("Freeing the v pointer");
         if (v != NULL)
@@ -295,7 +295,7 @@ lispenv* new_lispenv()
     e->count = 0;
     e->syms = NULL;
     e->vals = NULL;
-		e->parent = NULL;
+    e->parent = NULL;
     return e;
 }
 
@@ -314,10 +314,8 @@ void destroy_lispenv(lispenv* env)
     free(env);
     env = NULL;
     // parent is it's own environment
-		// so it isn't destroyed
+    // so it isn't destroyed
 }
-
-
 
 lispval* clone_lispval(lispval* old);
 lispval* get_from_lispenv(char* sym, lispenv* env)
@@ -329,12 +327,12 @@ lispval* get_from_lispenv(char* sym, lispenv* env)
         }
     }
 
-		if(env->parent != NULL){
-			return get_from_lispenv(sym, env->parent);
-		} else {
-			return lispval_err("Error: unbound symbol");
-		}
-		// and this explains shadowing!
+    if (env->parent != NULL) {
+        return get_from_lispenv(sym, env->parent);
+    } else {
+        return lispval_err("Error: unbound symbol");
+    }
+    // and this explains shadowing!
 }
 
 void insert_in_lispenv(char* sym, lispval* v, lispenv* env)
@@ -558,7 +556,7 @@ lispval* clone_lispval(lispval* old)
         new = lispval_builtin_func(old->builtin_func, old->builtin_func_name);
         break;
     case LISPVAL_USER_FUNC:
-				new = lispval_lambda_func(old->variables, old->manipulation);
+        new = lispval_lambda_func(old->variables, old->manipulation);
         break;
     case LISPVAL_SEXPR:
         new = lispval_sexpr();
@@ -735,7 +733,7 @@ lispval* builtin_def(lispval* v, lispenv* env)
 
     lispval* symbols = source->cell[0];
     lispval* values = source->cell[1];
-    for (int i=0; i < symbols->count; i++) {
+    for (int i = 0; i < symbols->count; i++) {
         LISPVAL_ASSERT(symbols->cell[i]->type == LISPVAL_SYM, "Error: in function def, the first list of items should be of type symbol:  def { { a b } { 1 2 } }");
         if (VERBOSE)
             print_lispval_tree(symbols, 0);
@@ -749,24 +747,25 @@ lispval* builtin_def(lispval* v, lispenv* env)
 }
 
 // A builtin for defining a function
-lispval* builtin_define_lambda(lispval* v, lispenv* env){
-  // @ { {x y} { + x y } }
-  // def { {plus} {{@ {x y} {+ x y}} }}
-  // (eval plus) 1 2
-	// (@ { {x y} { + x y } }) 1 2
-  LISPVAL_ASSERT( v->count == 2, "Lambda definition requires two arguments; try @ { {x y} { + x y } }");
-  LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the first sub-arg be a q-expression; try @ { {x y} { + x y } }");
-  LISPVAL_ASSERT(v->cell[1]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the second sub-arg be a q-expression; try @ { {x y} { + x y } }");
-	
-	lispval* variables = clone_lispval(v->cell[0]);
-	lispval* manipulation = clone_lispval(v->cell[1]);
+lispval* builtin_define_lambda(lispval* v, lispenv* env)
+{
+    // @ { {x y} { + x y } }
+    // def { {plus} {{@ {x y} {+ x y}} }}
+    // (eval plus) 1 2
+    // (@ { {x y} { + x y } }) 1 2
+    LISPVAL_ASSERT(v->count == 2, "Lambda definition requires two arguments; try @ { {x y} { + x y } }");
+    LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the first sub-arg be a q-expression; try @ { {x y} { + x y } }");
+    LISPVAL_ASSERT(v->cell[1]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the second sub-arg be a q-expression; try @ { {x y} { + x y } }");
 
-	for(int i=0; i>variables->count; i++){
-		LISPVAL_ASSERT(variables->cell[i]->type == LISPVAL_SYM, "First argument in function definition must only be symbols. Try @ { {x y} { + x y } }");
-	}
+    lispval* variables = clone_lispval(v->cell[0]);
+    lispval* manipulation = clone_lispval(v->cell[1]);
 
-	lispval* lambda = lispval_lambda_func(variables, manipulation);
-	return lambda;
+    for (int i = 0; i > variables->count; i++) {
+        LISPVAL_ASSERT(variables->cell[i]->type == LISPVAL_SYM, "First argument in function definition must only be symbols. Try @ { {x y} { + x y } }");
+    }
+
+    lispval* lambda = lispval_lambda_func(variables, manipulation);
+    return lambda;
 }
 // Simple math ops
 lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
@@ -876,7 +875,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         printfln("Evaluating lispval");
     // Check if this is neither an s-expression nor a symbol; otherwise return as is.
     if (VERBOSE)
-			printfln("%s", "");
+        printfln("%s", "");
     if (l->type != LISPVAL_SEXPR && l->type != LISPVAL_SYM)
         return l;
 
@@ -886,10 +885,10 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
     if (l->type == LISPVAL_SYM) {
         // Unclear how I want to structure this so as to not get memory errors.
         lispval* answer = get_from_lispenv(l->sym, env);
-				delete_lispval(l); 
-				// fixes memory bug! I guess that if I just return get_from_lispenv,
-				// then it gets lost along the way? Not sure.
-				return answer;
+        delete_lispval(l);
+        // fixes memory bug! I guess that if I just return get_from_lispenv,
+        // then it gets lost along the way? Not sure.
+        return answer;
     }
 
     // Evaluate the children if needed
@@ -931,7 +930,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
     // Check if the first element is an operation.
     if (VERBOSE)
         printfln("Checking is first element is a function");
-    if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_BUILTIN_FUNC)){
+    if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_BUILTIN_FUNC)) {
 
         if (VERBOSE)
             printfln("Passed check");
@@ -940,23 +939,22 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         if (VERBOSE)
             print_lispval_tree(l, 4);
 
-				// Ok, do this properly now.
+        // Ok, do this properly now.
         if (VERBOSE)
             printfln("Constructing function and operands");
-				lispval* f  = clone_lispval(l->cell[0]);
-				lispval* operands = lispval_sexpr();
-				for(int i=1; i<l->count; i++){
-					lispval_append_child(operands, l->cell[i]);
-
-				}
+        lispval* f = clone_lispval(l->cell[0]);
+        lispval* operands = lispval_sexpr();
+        for (int i = 1; i < l->count; i++) {
+            lispval_append_child(operands, l->cell[i]);
+        }
         if (VERBOSE)
             printfln("Applying function to operands");
         // lispval* answer = lispval_num(42);
         lispval* answer = f->builtin_func(operands, env);
         if (VERBOSE)
             printfln("Applied function to operands");
-        
-				if (VERBOSE)
+
+        if (VERBOSE)
             printfln("Cleaning up");
         delete_lispval(f);
         delete_lispval(operands);
@@ -966,10 +964,10 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         return answer;
     }
 
-		if (l->count >= 2  && ((l->cell[0])->type == LISPVAL_USER_FUNC)) {
-				// Do something with user-defined functions here
+    if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_USER_FUNC)) {
+        // Do something with user-defined functions here
         return lispval_err("Error: User-defined functions not yet implemented");
-		}
+    }
 
     return l;
 }
@@ -978,19 +976,19 @@ int modify_verbosity(char* command)
 {
     if (strcmp("VERBOSE=0", command) == 0) {
         VERBOSE = 0;
-				return 1;
+        return 1;
     }
     if (strcmp("VERBOSE=1", command) == 0) {
         VERBOSE = 1;
         printfln("VERBOSE=1");
-				return 1;
+        return 1;
     }
     if (strcmp("VERBOSE=2", command) == 0) {
         printfln("VERBOSE=2");
         VERBOSE = 2;
-				return 1;
+        return 1;
     }
-		return 0;
+    return 0;
 }
 
 // Main
@@ -1039,16 +1037,16 @@ int main(int argc, char** argv)
     if (VERBOSE)
         printfln("\n");
 
-		// Initialize a repl
+    // Initialize a repl
     int loop = 1;
     while (loop) {
         char* input = readline("mumble> ");
         if (input == NULL) {
-						break;
+            break;
         } else {
-						if(modify_verbosity(input)){
-							continue;
-						}
+            if (modify_verbosity(input)) {
+                continue;
+            }
             /* Attempt to Parse the user Input */
             mpc_result_t result;
             if (mpc_parse("<stdin>", input, Mumble, &result)) {
@@ -1091,7 +1089,7 @@ int main(int argc, char** argv)
                 //if(VERBOSE) printfln("Deleting this lispval:");
                 // if(VERBOSE) print_lispval_tree(l,2);
 
-								// delete_lispval(l);
+                // delete_lispval(l);
                 // if(VERBOSE) printfln("Deleted that ^ lispval");
                 // ^ I do not understand how the memory in l is freed.
                 // delete the ast
@@ -1109,9 +1107,9 @@ int main(int argc, char** argv)
         input = NULL;
     }
 
-		// Clear the history
-		rl_uninitialize();
-		// rl_free_line_state();
+    // Clear the history
+    rl_uninitialize();
+    // rl_free_line_state();
     // Clean up environment
     destroy_lispenv(env);
 
