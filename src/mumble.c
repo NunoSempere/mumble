@@ -664,7 +664,7 @@ lispval* builtin_def(lispval* v, lispenv* env)
 
     lispval* symbols = source->cell[0];
     lispval* values = source->cell[1];
-    for (int i; i < symbols->count; i++) {
+    for (int i=0; i < symbols->count; i++) {
         LISPVAL_ASSERT(symbols->cell[i]->type == LISPVAL_SYM, "Error: in function def, the first list of items should be of type symbol:  def { { a b } { 1 2 } }");
         if (VERBOSE)
             print_lispval_tree(symbols, 0);
