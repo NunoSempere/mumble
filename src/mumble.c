@@ -733,19 +733,20 @@ lispval* builtin_join(lispval* l, lispenv* e)
 // Define a variable
 lispval* builtin_def(lispval* v, lispenv* env)
 {
-    // Takes one argument: def { { a b } { 1 2 } }
-    lispval* source = v->cell[0];
-    LISPVAL_ASSERT(v->count == 1, "Error: function def passed too many arguments");
-    LISPVAL_ASSERT(source->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
-    LISPVAL_ASSERT(source->count == 2, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
-    LISPVAL_ASSERT(source->cell[0]->type == LISPVAL_QEXPR, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
-    LISPVAL_ASSERT(source->cell[1]->type == LISPVAL_QEXPR || source->cell[1]->type == LISPVAL_SEXPR, "Error: Argument passed to def should be a q expr with two q expressions as children: def { { a b } { 1 2 } } ");
-    LISPVAL_ASSERT(source->cell[0]->count == source->cell[1]->count, "Error: In function \"def\" both subarguments should have the same length");
+    // Takes two arguments: def { a b } { 1 2 }
+    LISPVAL_ASSERT(v->count == 2, "Error: function def passed something other than 2 arguments");
+		
+		lispval* symbols = v->cell[0];
+		lispval* values = v->cell[1];
+		symbols = evaluate_lispval(symbols, env);
+		values = evaluate_lispval(values, env);
+    
+		LISPVAL_ASSERT(symbols->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
+		LISPVAL_ASSERT(values->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
+    LISPVAL_ASSERT(symbols->count == values->count, "Error: In function \"def\" both subarguments should have the same length");
 
-    lispval* symbols = source->cell[0];
-    lispval* values = source->cell[1];
     for (int i = 0; i < symbols->count; i++) {
-        LISPVAL_ASSERT(symbols->cell[i]->type == LISPVAL_SYM, "Error: in function def, the first list of items should be of type symbol:  def { { a b } { 1 2 } }");
+        LISPVAL_ASSERT(symbols->cell[i]->type == LISPVAL_SYM, "Error: in function def, the first list of items should be of type symbol:  def { a b } { 1 2 } ");
         if (VERBOSE)
             print_lispval_tree(symbols, 0);
         if (VERBOSE)
