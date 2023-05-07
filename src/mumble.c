@@ -507,7 +507,7 @@ void print_lispval_tree(lispval* v, int indent_level)
         }
         break;
     default:
-        printfln("Error: unknown lispval type\n");
+        if(VERBOSE) printfln("Error: unknown lispval type\n");
         // printfln("%s", v->sym);
     }
     if (VERBOSE > 1)
@@ -552,7 +552,7 @@ void print_lispval_parenthesis(lispval* v)
         printf("} ");
         break;
     default:
-        printfln("Error: unknown lispval type\n");
+        if(VERBOSE) printfln("Error: unknown lispval type\n");
         // printfln("%s", v->sym);
     }
 }
