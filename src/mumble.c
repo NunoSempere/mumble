@@ -608,7 +608,7 @@ lispval* clone_lispval(lispval* old)
         return lispval_err("Error: Cloning element of unknown type.");
     }
 
-    if (old->count > 0 && (old->type == LISPVAL_QEXPR || old->type == LISPVAL_SEXPR)) {
+    if ((old->type == LISPVAL_QEXPR || old->type == LISPVAL_SEXPR) && old->count > 0 ) {
         for (int i = 0; i < old->count; i++) {
             lispval* temp_child = old->cell[i];
             lispval* child = clone_lispval(temp_child);
@@ -698,7 +698,7 @@ lispval* builtin_eval(lispval* v, lispenv* env)
     lispval* temp = clone_lispval(old);
     temp->type = LISPVAL_SEXPR;
     lispval* answer = evaluate_lispval(temp, env);
-    answer = evaluate_lispval(answer, env);
+    // answer = evaluate_lispval(answer, env);
     // ^ needed to make this example work:
     //  (eval {head {+ -}}) 1 2 3
     //  though I'm not sure why
@@ -733,29 +733,27 @@ lispval* builtin_join(lispval* l, lispenv* e)
 // Define a variable
 lispval* builtin_def(lispval* v, lispenv* env)
 {
-    // Takes two arguments: def { a b } { 1 2 }
+    // Takes two arguments: def { a } { 1 }
+		// def a {1}
+		// def b (@ {x y} {+ x y})
     LISPVAL_ASSERT(v->count == 2, "Error: function def passed something other than 2 arguments");
 		
-		lispval* symbols = v->cell[0];
-		lispval* values = v->cell[1];
-		symbols = evaluate_lispval(symbols, env);
-		values = evaluate_lispval(values, env);
+		lispval* symbol_wrapper = v->cell[0];
+		lispval* value_wrapper = v->cell[1];
     
-		LISPVAL_ASSERT(symbols->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
-		LISPVAL_ASSERT(values->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
-    LISPVAL_ASSERT(symbols->count == values->count, "Error: In function \"def\" both subarguments should have the same length");
+		LISPVAL_ASSERT(symbol_wrapper->type == LISPVAL_QEXPR, "First argument should be a Q-expr with a symbol; def {a} ((+ 1 2))");
+		LISPVAL_ASSERT(symbol_wrapper->count == 1, "First argument should only have one sub-argument; def {a} ((+ 1 2))");
+		
+		// LISPVAL_ASSERT(value_wrapper->type == LISPVAL_QEXPR || value_wrapper->type == LISPVAL_SEXPR, "Second argument should be a () or [] list; def {a} {1}; def {a} ((1 2 3))");
+		LISPVAL_ASSERT(value_wrapper->count == 1, "Second argument should be a () or [] list wtih one element; def {a} {1}; def {a} ((1 2 3))");
 
-    for (int i = 0; i < symbols->count; i++) {
-        LISPVAL_ASSERT(symbols->cell[i]->type == LISPVAL_SYM, "Error: in function def, the first list of items should be of type symbol:  def { a b } { 1 2 } ");
-        if (VERBOSE)
-            print_lispval_tree(symbols, 0);
-        if (VERBOSE)
-            print_lispval_tree(values, 0);
-        if (VERBOSE)
-            printf("\n");
-        insert_in_current_lispenv(symbols->cell[i]->sym, values->cell[i], env);
-    }
-    return lispval_sexpr(); // ()
+		lispval* symbol = symbol_wrapper->cell[0];
+		lispval* value = value_wrapper->cell[0];
+
+		LISPVAL_ASSERT(symbol->type == LISPVAL_SYM, "First argument should be a symbol; def {a} ((+ 1 2))");
+		insert_in_current_lispenv(symbol->sym, value, env);
+    
+		return lispval_sexpr(); // ()
 }
 
 // A builtin for defining a function
@@ -964,7 +962,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         if (VERBOSE)
             printfln("Applying function to operands");
         // lispval* answer = lispval_num(42);
-        lispval* answer = f->builtin_func(operands, env);
+        lispval* answer = clone_lispval(f->builtin_func(operands, env));
         if (VERBOSE)
             printfln("Applied function to operands");
 
