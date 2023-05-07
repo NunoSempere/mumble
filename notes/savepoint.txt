@@ -1,2 +1,3 @@
 https://buildyourownlisp.com/chapter7_evaluation#trees
 https://buildyourownlisp.com/chapter9_s_expressions
+https://buildyourownlisp.com/chapter12_functions

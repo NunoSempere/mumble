@@ -735,6 +735,23 @@ lispval* builtin_def(lispval* v, lispenv* env)
     return lispval_sexpr(); // ()
 }
 
+// A builtin for defining a function
+lispval* builtin_define_lambda(lispval* v, lispenv* env){
+  // @ { {x y} { + x y } }
+  LISPVAL_ASSERT( v->count == 2, "Lambda definition requires two arguments; try @ { {x y} { + x y } }");
+  LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the first sub-arg be a q-expression; try @ { {x y} { + x y } }");
+  LISPVAL_ASSERT(v->cell[1]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the second sub-arg be a q-expression; try @ { {x y} { + x y } }");
+	
+	lispval* variables = clone_lispval(v->cell[0]);
+	lispval* manipulation = clone_lispval(v->cell[1]);
+
+	for(int i=0; i>variables->count; i++){
+		LISPVAL_ASSERT(variables->cell[i]->type == LISPVAL_SYM, "First argument in function definition must only be symbols. Try @ { {x y} { + x y } }");
+	}
+
+	lispval* lambda = lispval_lambda_func(variables, manipulation);
+	return lambda;
+}
 // Simple math ops
 lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
 {
@@ -806,30 +823,6 @@ lispval* builtin_divide(lispval* v, lispenv* env)
     return builtin_math_ops("/", v, env);
 }
 
-// Aggregate both math and operations over lists
-lispval* builtin_functions(char* func, lispval* v, lispenv* env)
-{
-    if (strcmp("list", func) == 0) {
-        return builtin_list(v, env);
-    } else if (strcmp("head", func) == 0) {
-        return builtin_head(v, env);
-    } else if (strcmp("tail", func) == 0) {
-        return builtin_tail(v, env);
-    } else if (strcmp("join", func) == 0) {
-        return builtin_join(v, env);
-    } else if (strcmp("eval", func) == 0) {
-        return builtin_eval(v, env);
-    } else if (strcmp("len", func) == 0) {
-        return builtin_len(v, env);
-    } else if (strstr("+-/*", func)) {
-        return builtin_math_ops(func, v, env);
-    } else {
-        return lispval_err("Unknown function");
-    }
-    // Returns something that should be freed later: depends on eval
-    // Returns something that is independent of the input: depends on eval
-}
-
 // Add builtins to an env
 void lispenv_add_builtin(char* builtin_func_name, lispbuiltin func, lispenv* env)
 {
@@ -857,6 +850,7 @@ void lispenv_add_builtins(lispenv* env)
     lispenv_add_builtin("eval", builtin_eval, env);
     lispenv_add_builtin("join", builtin_join, env);
     lispenv_add_builtin("def", builtin_def, env);
+    lispenv_add_builtin("@", builtin_define_lambda, env);
 }
 
 // Evaluate the lispval
@@ -948,7 +942,6 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         
 				if (VERBOSE)
             printfln("Cleaning up");
-        // builtin_functions(operation->sym, l, env);
         delete_lispval(f);
         delete_lispval(operands);
         // delete_lispval(temp);
@@ -959,23 +952,29 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 
 		if (l->count >= 2  && ((l->cell[0])->type == LISPVAL_USER_FUNC)) {
 				// Do something with user-defined functions here
+        return lispval_err("Error: User-defined functions not yet implemented");
 		}
 
     return l;
 }
 // Increase or decrease verbosity level manually
-void modify_verbosity(char* command)
+int modify_verbosity(char* command)
 {
     if (strcmp("VERBOSE=0", command) == 0) {
         VERBOSE = 0;
+				return 1;
     }
     if (strcmp("VERBOSE=1", command) == 0) {
         VERBOSE = 1;
         printfln("VERBOSE=1");
+				return 1;
     }
     if (strcmp("VERBOSE=2", command) == 0) {
+        printfln("VERBOSE=2");
         VERBOSE = 2;
+				return 1;
     }
+		return 0;
 }
 
 // Main
@@ -1028,12 +1027,12 @@ int main(int argc, char** argv)
     int loop = 1;
     while (loop) {
         char* input = readline("mumble> ");
-        modify_verbosity(input);
         if (input == NULL) {
-            // ^ catches Ctrl+D
-            loop = 0;
-
+						break;
         } else {
+						if(modify_verbosity(input)){
+							continue;
+						}
             /* Attempt to Parse the user Input */
             mpc_result_t result;
             if (mpc_parse("<stdin>", input, Mumble, &result)) {
