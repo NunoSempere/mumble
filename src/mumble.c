@@ -358,6 +358,23 @@ void insert_in_lispenv(char* sym, lispval* v, lispenv* env)
     }
 }
 
+lispenv* clone_lispenv(lispenv* origin_env){
+    lispenv* new_env = malloc(sizeof(lispenv));
+    new_env->count = origin_env->count;
+    new_env->parent = origin_env->parent;
+
+    new_env->syms = malloc(sizeof(char*) * origin_env->count);
+    new_env->vals = malloc(sizeof(lispval*) * origin_env->count);
+		
+		for(int i=0;i<origin_env->count; i++){
+			new_env->syms[i] = malloc(strlen(origin_env->syms[i]) + 1);
+			strcpy(new_env->syms[i], origin_env->syms[i]);
+			new_env->vals[i] = clone_lispval(origin_env->vals[i]);
+		}
+    return new_env;
+}
+
+
 // Read ast into a lispval object
 lispval* lispval_append_child(lispval* parent, lispval* child)
 {
@@ -538,7 +555,7 @@ void print_ast(mpc_ast_t* ast, int indent_level)
     indent = NULL;
 }
 
-// Lispval helpers
+// Cloners
 lispval* clone_lispval(lispval* old)
 {
     lispval* new;
