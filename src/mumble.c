@@ -44,7 +44,8 @@ enum {
     LISPVAL_NUM,
     LISPVAL_ERR,
     LISPVAL_SYM,
-    LISPVAL_FUNC,
+    LISPVAL_BUILTIN_FUNC,
+    LISPVAL_USER_FUNC,
     LISPVAL_SEXPR,
     LISPVAL_QEXPR,
 };
@@ -118,7 +119,7 @@ lispval* lispval_builtin_func(lispbuiltin func, char* builtin_func_name)
     if (VERBOSE)
         printfln("Allocating func name:%s, pointer: %p", builtin_func_name, func);
     lispval* v = malloc(sizeof(lispval));
-    v->type = LISPVAL_FUNC;
+    v->type = LISPVAL_BUILTIN_FUNC;
     v->count = 0;
     v->builtin_func_name = malloc(strlen(builtin_func_name) + 1);
     strcpy(v->builtin_func_name, builtin_func_name);
@@ -126,6 +127,18 @@ lispval* lispval_builtin_func(lispbuiltin func, char* builtin_func_name)
     if (VERBOSE)
         printfln("Allocated func");
     return v;
+}
+
+lispenv* new_lispenv();
+lispval* lispval_lambda_func(lispval* variables, lispval* manipulation){
+	lispval* v = malloc(sizeof(lispval));
+  v->type = LISPVAL_USER_FUNC;
+	v->builtin_func = NULL;
+	v->env = new_lispenv();
+	v->variables = variables; 	
+	v->manipulation = manipulation; 
+	// unclear how to garbage-collect this. Maybe add to a list and collect at the end?
+  return v;
 }
 
 lispval* lispval_sexpr(void)
@@ -190,16 +203,41 @@ void delete_lispval(lispval* v)
         if (VERBOSE)
             printfln("Freed sym");
         break;
-    case LISPVAL_FUNC:
-        if (VERBOSE)
-            printfln("Freeing func");
-        if (v->builtin_func_name != NULL)
-            free(v->builtin_func_name);
-        v->builtin_func_name = NULL;
+    case LISPVAL_BUILTIN_FUNC:
+        if (v->builtin_func_name != NULL){
+					if (VERBOSE){
+							printfln("Freeing builtin func");
+					}
+					free(v->builtin_func_name);
+					v->builtin_func_name = NULL;
+				}
         if (v != NULL)
             free(v);
         if (VERBOSE)
-            printfln("Freed func");
+            printfln("Freed builtin func");
+        // Don't do anything with v->func for now
+        // Though we could delete the pointer to the function later
+        // free(v->func);
+        break;
+    case LISPVAL_USER_FUNC:
+        if (VERBOSE)
+            printfln("Freeing user-defined func");
+        if (v->env != NULL){
+        	free(v->env);
+					v->env = NULL;
+				}
+        if (v->variables != NULL){
+        	free(v->variables);
+					v->variables = NULL;
+				}
+        if (v->manipulation != NULL){
+        	free(v->manipulation);
+					v->manipulation = NULL;
+				}
+        if (v != NULL)
+            free(v);
+        if (VERBOSE)
+            printfln("Freed user-defined func");
         // Don't do anything with v->func for now
         // Though we could delete the pointer to the function later
         // free(v->func);
@@ -399,8 +437,11 @@ void print_lispval_tree(lispval* v, int indent_level)
     case LISPVAL_SYM:
         printfln("%sSymbol: %s", indent, v->sym);
         break;
-    case LISPVAL_FUNC:
+    case LISPVAL_BUILTIN_FUNC:
         printfln("%sFunction, name: %s, pointer: %p", indent, v->builtin_func_name, v->builtin_func);
+        break;
+    case LISPVAL_USER_FUNC:
+        printfln("%sUser-defined function: %p", indent, v->env); // Identify it with its environment?
         break;
     case LISPVAL_SEXPR:
         printfln("%sSExpr, with %d children:", indent, v->count);
@@ -439,8 +480,11 @@ void print_lispval_parenthesis(lispval* v)
     case LISPVAL_SYM:
         printf("%s ", v->sym);
         break;
-    case LISPVAL_FUNC:
+    case LISPVAL_BUILTIN_FUNC:
         printf("<function, name: %s, pointer: %p> ", v->builtin_func_name, v->builtin_func);
+        break;
+    case LISPVAL_USER_FUNC:
+        printf("<user-defined function, pointer: %p> ", v->env);
         break;
     case LISPVAL_SEXPR:
         printf("( ");
@@ -497,8 +541,11 @@ lispval* clone_lispval(lispval* old)
     case LISPVAL_SYM:
         new = lispval_sym(old->sym);
         break;
-    case LISPVAL_FUNC:
+    case LISPVAL_BUILTIN_FUNC:
         new = lispval_builtin_func(old->builtin_func, old->builtin_func_name);
+        break;
+    case LISPVAL_USER_FUNC:
+				new = lispval_lambda_func(old->variables, old->manipulation);
         break;
     case LISPVAL_SEXPR:
         new = lispval_sexpr();
@@ -874,7 +921,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
     // Check if the first element is an operation.
     if (VERBOSE)
         printfln("Checking is first element is a function");
-    if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_FUNC)) {
+    if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_BUILTIN_FUNC)){
 
         if (VERBOSE)
             printfln("Passed check");
@@ -909,6 +956,11 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
             printfln("Cleaned up. Returning");
         return answer;
     }
+
+		if (l->count >= 2  && ((l->cell[0])->type == LISPVAL_USER_FUNC)) {
+				// Do something with user-defined functions here
+		}
+
     return l;
 }
 // Increase or decrease verbosity level manually
