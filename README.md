@@ -74,12 +74,13 @@ mumble> / a b c
 mumble> VERBOSITY=0
 mumble> VERBOSITY=1
 mumble> VERBOSITY=2
-mumble> def { {plus} {(@ {x y} {+ x y})} }
+mumble> def {sq} (@ {x} {* x x})
+mumble> sq 44
+1936.000000
+mumble> def {sqsum} (@ {x y} {(+ (sq x) (sq y))})
 ( )
-mumble> plus
-( @ { x y } { + x y } )
-mumble>  eval {plus 1 2}
-3.000000
+mumble> sqsum 2 3
+( 13.000000 )
 ```
 
 
