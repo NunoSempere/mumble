@@ -9,6 +9,13 @@ This is a Lisp written in C. It follows the outline in this [Build Your Own Lisp
 - Different and perhaps slightly more elegant printing functions
 - A slightly different approach to evaluating functions
 - Capturing Ctrl+D
+- Float instead of ints
+
+Conversely, it doesn't have:
+- Function currying
+- strings
+- Variable arguments
+- ...
 
 Overall this might be mostly of interest as a pointer to the book that this is originally based on. And to readers of that same book, I'd be curious to see what you ended up with.
 

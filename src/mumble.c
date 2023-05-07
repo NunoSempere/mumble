@@ -167,6 +167,7 @@ lispval* lispval_qexpr(void)
 
 // Destructor
 void print_lispval_tree(lispval* v, int indent_level);
+void destroy_lispenv(lispenv* env);
 void delete_lispval(lispval* v)
 {
     if (v == NULL || v->type > LARGEST_LISPVAL)
@@ -225,14 +226,17 @@ void delete_lispval(lispval* v)
         if (VERBOSE)
             printfln("Freeing user-defined func");
         if (v->env != NULL) {
+            destroy_lispenv(v->env);
             free(v->env);
             v->env = NULL;
         }
         if (v->variables != NULL) {
+            delete_lispval(v->variables);
             free(v->variables);
             v->variables = NULL;
         }
         if (v->manipulation != NULL) {
+            delete_lispval(v->manipulation);
             free(v->manipulation);
             v->manipulation = NULL;
         }
@@ -963,7 +967,21 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_USER_FUNC)) {
         // Do something with user-defined functions here
-        return lispval_err("Error: User-defined functions not yet implemented");
+        lispval* f = clone_lispval(l->cell[0]);
+
+        // check whether function takes as many arguments as given
+        LISPVAL_ASSERT(f->variables->count == (l->count - 1), "Error: Incorrect number of variables given to user-defined function");
+
+        for (int i = 1; i < l->count; i++) {
+            // lispval_append_child(operands, l->cell[i]);
+            insert_in_current_lispenv(
+                f->variables->cell[i]->sym, l->cell[i], f->env);
+        }
+        lispval* answer = evaluate_lispval(f->manipulation, f->env);
+        destroy_lispenv(f->env);
+        return answer;
+
+        // return lispval_err("Error: User-defined functions not yet implemented");
     }
 
     return l;
