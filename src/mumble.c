@@ -10,7 +10,7 @@
     if (!(cond)) {                \
         return lispval_err(err);  \
     }
-int VERBOSE = 2;
+int VERBOSE = 0;
 #define printfln(...)                                    \
     do {                                                 \
         if (VERBOSE == 2) {                              \
