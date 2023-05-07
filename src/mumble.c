@@ -737,23 +737,19 @@ lispval* builtin_def(lispval* v, lispenv* env)
     LISPVAL_ASSERT(v->count == 2, "Error: function def passed something other than 2 arguments");
 		
 		lispval* symbols = v->cell[0];
-		lispval* values = v->cell[1];
-		symbols = evaluate_lispval(symbols, env);
-		values = evaluate_lispval(values, env);
     
 		LISPVAL_ASSERT(symbols->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
-		LISPVAL_ASSERT(values->type == LISPVAL_QEXPR, "Error: Argument passed to def is not a q-expr, i.e., a bracketed list.");
-    LISPVAL_ASSERT(symbols->count == values->count, "Error: In function \"def\" both subarguments should have the same length");
+    LISPVAL_ASSERT(symbols->count == v->count-1, "Error: In function \"def\" both subarguments should have the same length");
 
     for (int i = 0; i < symbols->count; i++) {
         LISPVAL_ASSERT(symbols->cell[i]->type == LISPVAL_SYM, "Error: in function def, the first list of items should be of type symbol:  def { a b } { 1 2 } ");
         if (VERBOSE)
             print_lispval_tree(symbols, 0);
         if (VERBOSE)
-            print_lispval_tree(values, 0);
+            print_lispval_tree(v->cell[i+1], 0);
         if (VERBOSE)
             printf("\n");
-        insert_in_current_lispenv(symbols->cell[i]->sym, values->cell[i], env);
+        insert_in_current_lispenv(symbols->cell[i]->sym, v->cell[i+1], env);
     }
     return lispval_sexpr(); // ()
 }
