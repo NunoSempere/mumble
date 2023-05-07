@@ -32,14 +32,12 @@ struct lispval;
 struct lispenv;
 typedef struct lispval lispval;
 typedef struct lispenv lispenv;
-
 typedef lispval* (*lispbuiltin)(lispval*, lispenv*);
 // this defines the lispbuiltin type
 // which seems to be a pointer to a function which takes in a lispenv*
 // and a lispval* and returns a lispval*
 
-// Types: Actual types
-
+// Types
 enum {
     LISPVAL_NUM,
     LISPVAL_ERR,
@@ -73,21 +71,24 @@ typedef struct lispval {
     struct lispval** cell; // list of lisval*
 } lispval;
 
-enum {
-    LISPERR_DIV_ZERO,
-    LISPERR_BAD_OP,
-    LISPERR_BAD_NUM
-};
+// Function types 
+void print_lispval_tree(lispval* v, int indent_level);
+lispenv* new_lispenv();
+void destroy_lispenv(lispenv* env);
+lispval* clone_lispval(lispval* old);
+lispval* evaluate_lispval(lispval* l, lispenv* env);
 
 // Constructors
 lispval* lispval_num(double x)
 {
-    if (VERBOSE)
-        printfln("Allocated num");
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_NUM;
     v->count = 0;
     v->num = x;
+    if (VERBOSE)
+        printfln("Allocated num");
+    if (VERBOSE > 1)
+			print_lispval_tree(v, 2);
     return v;
 }
 
@@ -130,9 +131,11 @@ lispval* lispval_builtin_func(lispbuiltin func, char* builtin_func_name)
     return v;
 }
 
-lispenv* new_lispenv();
 lispval* lispval_lambda_func(lispval* variables, lispval* manipulation, lispenv* env)
 {
+	  if(VERBOSE){
+			printfln("Allocating user-defined function");
+		}
     lispval* v = malloc(sizeof(lispval));
     v->type = LISPVAL_USER_FUNC;
     v->builtin_func = NULL;
@@ -166,8 +169,6 @@ lispval* lispval_qexpr(void)
 }
 
 // Destructor
-void print_lispval_tree(lispval* v, int indent_level);
-void destroy_lispenv(lispenv* env);
 void delete_lispval(lispval* v)
 {
     if (v == NULL || v->type > LARGEST_LISPVAL)
@@ -323,7 +324,6 @@ void destroy_lispenv(lispenv* env)
     // so it isn't destroyed
 }
 
-lispval* clone_lispval(lispval* old);
 lispval* get_from_lispenv(char* sym, lispenv* env)
 {
     for (int i = 0; i < env->count; i++) {
@@ -691,7 +691,6 @@ lispval* builtin_len(lispval* v, lispenv* e)
     // Returns something that doesn't share pointers with the input: yes.
 }
 
-lispval* evaluate_lispval(lispval* l, lispenv* env);
 lispval* builtin_eval(lispval* v, lispenv* env)
 {
     // eval { + 1 2 3 }
