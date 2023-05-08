@@ -82,13 +82,11 @@ mumble> def {init} (@ {xs} { list((head xs)) } )
 mumble> init {1 2}
 ```
 
+## To do
+
+- [x] Define functions!
+- [ ] Define if, = and >
 
 ## Gotchas
 
 This doesn't currently run on Windows. But it easily could, with [preprocessor statements from the book].
-
-## Usage and licensing
-
-I don't expect this project to be such that people might want to use it. If you want a
-
-But for the eventuality, this code is licensed under the MIT license; see the license.txt file.
