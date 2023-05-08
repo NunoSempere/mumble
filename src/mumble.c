@@ -251,16 +251,16 @@ void delete_lispval(lispval* v)
     case LISPVAL_USER_FUNC:
         if(VERBOSE) printfln("This shouldn't fire until the end, unless we are deleting the operands of a builtin function. E.g,. in def {id} (@ {x} {x}), there is a lambda function in the arguments, which should get collected.");
         // for now, do nothing
-        /*
         if (VERBOSE)
             printfln("Freeing user-defined func");
         if (v->env != NULL) {
-            // destroy_lispenv(v->env);
-            // free(v->env);
-            //v->env = NULL;
+            destroy_lispenv(v->env);
+            // ^ free(v->env) is not necessary; taken care of by destroy_lispenv
+            v->env = NULL;
         }
         if (v->variables != NULL) {
 						// delete_lispval(v->variables);
+						// free(v->variables)
             // v->variables = NULL;
         }
         if (v->manipulation != NULL) {
@@ -269,12 +269,14 @@ void delete_lispval(lispval* v)
             // v->manipulation = NULL;
         }
         if (v != NULL)
-            // free(v);
+            free(v);
         if (VERBOSE)
             printfln("Freed user-defined func");
         // Don't do anything with v->func for now
         // Though we could delete the pointer to the function later
-        // free(v->func);
+        // 
+				// free(v->func);
+        /*
         */
         break;
     case LISPVAL_SEXPR:
