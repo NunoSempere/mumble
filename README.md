@@ -76,11 +76,10 @@ mumble> VERBOSITY=1
 mumble> VERBOSITY=2
 mumble> def {sq} (@ {x} {* x x})
 mumble> sq 44
-1936.000000
 mumble> def {sqsum} (@ {x y} {(+ (sq x) (sq y))})
-( )
 mumble> sqsum 2 3
-( 13.000000 )
+mumble> def {init} (@ {xs} { list((head xs)) } )
+mumble> init {1 2}
 ```
 
 
