@@ -145,6 +145,12 @@ lispval* lispval_builtin_func(lispbuiltin func, char* builtin_func_name)
 
 lispval* lispval_lambda_func(lispval* variables, lispval* manipulation, lispenv* env)
 {
+    /* correct idiom for calling this:
+    lispval* variables = clone_lispval(v->cell[0]);
+    lispval* manipulation = clone_lispval(v->cell[1]);
+		lispenv* env = NULL; // clone_lispval(blah)
+    lispval* lambda = lispval_lambda_func(variables, manipulation, NULL);
+		 */
     if (VERBOSE) {
         printfln("Allocating user-defined function");
     }
@@ -157,6 +163,8 @@ lispval* lispval_lambda_func(lispval* variables, lispval* manipulation, lispenv*
     // Previously: unclear how to garbage-collect this. Maybe add to a list and collect at the end?
     // Now: Hah! Lambda functions are just added to the environment, so they will just
     // be destroyed when it is destroyed.
+		// But no! in def {id} (@ {x} {x}), there is a copy of a lambda function in 
+		// the arguments to def. Aarg!
     if (VERBOSE) {
         printfln("Allocated user-defined function");
     }
@@ -259,11 +267,13 @@ void delete_lispval(lispval* v)
             v->env = NULL;
         }
         if (v->variables != NULL) {
+					  // not deleting these for now.
 						// delete_lispval(v->variables);
 						// free(v->variables)
             // v->variables = NULL;
         }
         if (v->manipulation != NULL) {
+					  // not deleting these for now.
             // delete_lispval(v->manipulation);
             // free(v->manipulation);
             // v->manipulation = NULL;
@@ -631,7 +641,11 @@ lispval* clone_lispval(lispval* old)
         break;
     case LISPVAL_USER_FUNC:
         if(VERBOSE) printfln("Cloning function. This generally shouldn't be happening, given that I've decided to just add functions to the environment and just clean them when the environment is cleaned. One situation where it should happen is in def {id} (@ {x} {x}), there is a lambda function in the arguments, which should get collected. ");
-        new = lispval_lambda_func(old->variables, old->manipulation, old->env);
+				lispval* variables = clone_lispval(old->variables);
+				lispval* manipulation = clone_lispval(old->manipulation);
+				lispenv* env = clone_lispenv(old->env);
+				new = lispval_lambda_func(variables, manipulation, env);
+        // new = lispval_lambda_func(old->variables, old->manipulation, old->env);
         // Also, fun to notice how these choices around implementation would determine tricky behaviour details around variable shadowing.
         break;
     case LISPVAL_SEXPR:
@@ -805,9 +819,9 @@ lispval* builtin_define_lambda(lispval* v, lispenv* env)
     // def { {plus} {{@ {x y} {+ x y}} }}
     // (eval plus) 1 2
     // (@ { {x y} { + x y } }) 1 2
-    LISPVAL_ASSERT(v->count == 2, "Lambda definition requires two arguments; try @ { {x y} { + x y } }");
-    LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the first sub-arg be a q-expression; try @ { {x y} { + x y } }");
-    LISPVAL_ASSERT(v->cell[1]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the second sub-arg be a q-expression; try @ { {x y} { + x y } }");
+    LISPVAL_ASSERT(v->count == 2, "Lambda definition requires two arguments; try (@ {x y} { + x y }) ");
+    LISPVAL_ASSERT(v->cell[0]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the first sub-arg be a q-expression; try @ {x y} { + x y }");
+    LISPVAL_ASSERT(v->cell[1]->type == LISPVAL_QEXPR, "Lambda definition (@) requires that the second sub-arg be a q-expression; try @ {x y} { + x y }");
 
     lispval* variables = clone_lispval(v->cell[0]);
     lispval* manipulation = clone_lispval(v->cell[1]);
@@ -815,8 +829,9 @@ lispval* builtin_define_lambda(lispval* v, lispenv* env)
     for (int i = 0; i > variables->count; i++) {
         LISPVAL_ASSERT(variables->cell[i]->type == LISPVAL_SYM, "First argument in function definition must only be symbols. Try @ { {x y} { + x y } }");
     }
-
-    lispval* lambda = lispval_lambda_func(variables, manipulation, NULL);
+		lispenv* new_env = clone_lispenv(env);
+		// So env at the time of creation!
+    lispval* lambda = lispval_lambda_func(variables, manipulation, new_env);
     return lambda;
 }
 // Simple math ops
@@ -1048,6 +1063,8 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         lispval* temp_expression = clone_lispval(f->manipulation);
         temp_expression->type = LISPVAL_SEXPR;
         lispval* answer = evaluate_lispval(temp_expression, evaluation_env);
+				// delete_lispval(temp_expression);
+				// delete_lispenv(evaluation_env);
         // lispval* answer = builtin_eval(f->manipulation, f->env);
         // destroy_lispenv(f->env);
         return answer;
