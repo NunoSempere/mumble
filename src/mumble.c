@@ -1064,7 +1064,7 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         temp_expression->type = LISPVAL_SEXPR;
         lispval* answer = evaluate_lispval(temp_expression, evaluation_env);
 				// delete_lispval(temp_expression);
-				// delete_lispenv(evaluation_env);
+				destroy_lispenv(evaluation_env);
         // lispval* answer = builtin_eval(f->manipulation, f->env);
         // destroy_lispenv(f->env);
         return answer;
