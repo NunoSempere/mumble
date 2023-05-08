@@ -65,12 +65,9 @@ mumble> eval { head {1 2 3} }
 mumble> (eval { head {+ tail head } } ) 1 2 3 
 mumble> len {1 2 3}
 mumble> join { {1 2} {3 4} }
-mumble> def { {x} { 100 } }
-mumble> x
-mumble> def { { a b c } { 1 2 3} }
-mumble> * a b c
-mumble> - a b c
-mumble> / a b c
+mumble> def {x} { 100 }
+mumble> def {y} 100
+mumble> (x y)
 mumble> VERBOSITY=0
 mumble> VERBOSITY=1
 mumble> VERBOSITY=2
@@ -84,8 +81,9 @@ mumble> init {1 2}
 
 ## To do
 
-- [x] Define functions!
+- [x] Define functions
 - [ ] Define if, = and >
+- [ ] Build fibonacci function
 
 ## Gotchas
 
