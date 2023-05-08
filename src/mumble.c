@@ -249,7 +249,7 @@ void delete_lispval(lispval* v)
         // free(v->func);
         break;
     case LISPVAL_USER_FUNC:
-        printfln("This shouldn't fire until the end");
+        if(VERBOSE) printfln("This shouldn't fire until the end, unless we are deleting the operands of a builtin function. E.g,. in def {id} (@ {x} {x}), there is a lambda function in the arguments, which should get collected.");
         // for now, do nothing
         /*
         if (VERBOSE)
@@ -628,7 +628,7 @@ lispval* clone_lispval(lispval* old)
         new = lispval_builtin_func(old->builtin_func, old->builtin_func_name);
         break;
     case LISPVAL_USER_FUNC:
-        printfln("Cloning function. This shouldn't be happening, given that I've decided to just add functions to the environment and just clean them when the environment is cleaned");
+        if(VERBOSE) printfln("Cloning function. This generally shouldn't be happening, given that I've decided to just add functions to the environment and just clean them when the environment is cleaned. One situation where it should happen is in def {id} (@ {x} {x}), there is a lambda function in the arguments, which should get collected. ");
         new = lispval_lambda_func(old->variables, old->manipulation, old->env);
         // Also, fun to notice how these choices around implementation would determine tricky behaviour details around variable shadowing.
         break;
@@ -1018,18 +1018,18 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
 
     if (l->count >= 2 && ((l->cell[0])->type == LISPVAL_USER_FUNC)) {
         lispval* f = l->cell[0]; // clone_lispval(l->cell[0]);
-        if (VERBOSE) {
+				if (VERBOSE) {
             printfln("Evaluating user-defined function");
             print_lispval_tree(f, 2);
-            if (VERBOSE)
-                printfln("Expected %d variables, found %d variables.", f->variables->count, l->count - 1);
+						printfln("Expected %d variables, found %d variables.", f->variables->count, l->count - 1);
         }
-        f->env->parent = env;
-        LISPVAL_ASSERT(f->variables->count == (l->count - 1), "Error: Incorrect number of variables given to user-defined function");
-        if (VERBOSE)
-            printfln("Number of variables match");
+        
+				lispenv* evaluation_env = new_lispenv();
+				evaluation_env->parent = env;
 
+        LISPVAL_ASSERT(f->variables->count == (l->count - 1), "Error: Incorrect number of variables given to user-defined function");
         if (VERBOSE) {
+            printfln("Number of variables match");
             printfln("Function vars:");
             print_lispval_tree(f->variables, 2);
             printfln("Function manipulation:");
@@ -1037,19 +1037,18 @@ lispval* evaluate_lispval(lispval* l, lispenv* env)
         }
 
         for (int i = 0; i < f->variables->count; i++) {
-            insert_in_current_lispenv(f->variables->cell[i]->sym, l->cell[i + 1], f->env);
+            insert_in_current_lispenv(f->variables->cell[i]->sym, l->cell[i + 1], evaluation_env);
         }
         if (VERBOSE) {
-            printfln("User defined function environment: ");
-            print_env(f->env);
+            printfln("Evaluation environment: ");
+            print_env(evaluation_env);
         }
-        lispval* temp = clone_lispval(f->manipulation);
-        temp->type = LISPVAL_SEXPR;
-        lispval* answer = evaluate_lispval(temp, f->env);
+        lispval* temp_expression = clone_lispval(f->manipulation);
+        temp_expression->type = LISPVAL_SEXPR;
+        lispval* answer = evaluate_lispval(temp_expression, evaluation_env);
         // lispval* answer = builtin_eval(f->manipulation, f->env);
         // destroy_lispenv(f->env);
         return answer;
-        return lispval_err("Error: User-defined functions not yet implemented");
     }
 
     return l;
