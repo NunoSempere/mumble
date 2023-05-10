@@ -995,6 +995,7 @@ void lispenv_add_builtins(lispenv* env)
     lispenv_add_builtin("def", builtin_def, env);
     lispenv_add_builtin("@", builtin_define_lambda, env);
     lispenv_add_builtin("ifelse", builtin_ifelse, env);
+    lispenv_add_builtin("if", builtin_ifelse, env);
     lispenv_add_builtin("=", builtin_equal, env);
     lispenv_add_builtin(">", builtin_greater_than, env);
 }
