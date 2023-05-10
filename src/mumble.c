@@ -846,15 +846,35 @@ lispval* builtin_ifelse(lispval* v, lispenv* e)
     lispval* alternative = v->cell[2];
 		
 		if( choice->type == LISPVAL_NUM && choice->num == 0){
-			lispval* answer = clone_lispval(result);
+			lispval* answer = clone_lispval(alternative);
 			return answer;
 		}else {
-			lispval* answer = clone_lispval(alternative);
+			lispval* answer = clone_lispval(result);
 			return answer;
 		}
 }
 
-// Comparators: =, >
+// Comparators: =, > (also potentially <, >=, <=, <=)
+// For numbers. 
+
+lispval* builtin_equal(lispval* v, lispenv* e)
+{
+    // ifelse 1 {a} b
+    LISPVAL_ASSERT(v->count == 2, "Error: function = takes two numeric arguments. Try (= 1 2)");
+
+    lispval* a = v->cell[0];
+    lispval* b = v->cell[1];
+	  
+		LISPVAL_ASSERT(a->type == LISPVAL_NUM, "Error: Functio = only takes numeric arguments.");
+		LISPVAL_ASSERT(b->type == LISPVAL_NUM, "Error: Functio = only takes numeric arguments.");
+
+		if(a->num == b->num){
+			return lispval_num(1);
+		}else {
+			return lispval_num(0);
+		}
+}
+
 
 // Simple math ops
 lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
@@ -956,6 +976,7 @@ void lispenv_add_builtins(lispenv* env)
     lispenv_add_builtin("def", builtin_def, env);
     lispenv_add_builtin("@", builtin_define_lambda, env);
     lispenv_add_builtin("ifelse", builtin_ifelse, env);
+    lispenv_add_builtin("=", builtin_equal, env);
 }
 
 // Evaluate the lispval

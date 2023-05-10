@@ -76,7 +76,11 @@ mumble> sq 44
 mumble> def {sqsum} (@ {x y} {(+ (sq x) (sq y))})
 mumble> sqsum 2 3
 mumble> def {init} (@ {xs} { list((head xs)) } )
+mumble> def {unwrap} (@ {x} { head (list xx) } )
 mumble> init {1 2}
+mumble> ifelse 1 2 3
+mumble> ifelse 0 1 2 
+mumble> ifelse {1 2 3} (1) (1)
 ```
 
 ## To do
@@ -84,6 +88,7 @@ mumble> init {1 2}
 - [x] Define functions
 - [ ] Define if, = and >
 - [ ] Build fibonacci function
+  - Should look something like:  def {fib} (@ {x} { ifelse x (+ x (fib (- x 1))) 0 } )
 
 ## Gotchas
 
