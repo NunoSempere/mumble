@@ -1001,6 +1001,7 @@ void lispenv_add_builtins(lispenv* env)
     lispenv_add_builtin("tail", builtin_tail, env);
     lispenv_add_builtin("eval", builtin_eval, env);
     lispenv_add_builtin("join", builtin_join, env);
+    lispenv_add_builtin("len", builtin_len, env);
     lispenv_add_builtin("def", builtin_def, env);
     lispenv_add_builtin("@", builtin_define_lambda, env);
     lispenv_add_builtin("ifelse", builtin_ifelse, env);

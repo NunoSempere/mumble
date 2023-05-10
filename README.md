@@ -57,8 +57,8 @@ Simply call the `./mumble` binary:
 ```
 mumble> (1 2 3)
 mumble> { 1 2 3 }
-mumble> head (1 2 3)
-mumble> { head (1 2 3) }
+mumble> head {1 2 3}
+mumble> { head {1 2 3) }
 mumble> tail { 1 2 3 }
 mumble> list ( 1 2 3 )
 mumble> eval { head {1 2 3} } 
