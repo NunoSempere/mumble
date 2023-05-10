@@ -76,16 +76,26 @@ mumble> def {sqsum} (@ {x y} {(+ (sq x) (sq y))})
 mumble> sqsum 2 3
 mumble> VERBOSITY=0
 mumble> def {init} (@ {xs} { list((head xs)) } )
-mumble> def {unwrap} (@ {x} { head (list xx) } )
+mumble> def {kopf} (@ {xx} { head (list xx) } )
 mumble> init {1 2}
+mumble> kopf (1 2)
 mumble> ifelse 1 2 3
+mumble> if 1 2 3
 mumble> ifelse 0 1 2 
-mumble> ifelse {1 2 3} (1) (1)
+mumble> if 0 1 2 
+mumble> if {1 2 3} (1) (1)
 mumble> def {positive} (@ {x} {> x 0})
 mumble> def {fibtest} (@ {x} {if (> x 0) {+ x 1} 0 })
 mumble> fibtest 2
 mumble> def {fibonacci} (@ {x} {if (> x 1) { + (fibonacci (- x 2)) ( fibonacci ( - x 1 ) ) } 1} )
 mumble> fibonacci 4
+mumble> def {!} (@ {x} { if ( > 1 x) 1 { * x (! (- x 1)) } })
+mumble> ! 100
+mumble> def {++} (@ {x} { if ( > 1 x) 0 { + x (++ (- x 1)) } })
+mumble> ++ 10
+mumble>  def {++2} (@ {x} { / (* x (+ x 1)) 2 })
+mumble> ++2 10
+
 ```
 
 ## To do
