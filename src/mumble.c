@@ -782,7 +782,6 @@ lispval* builtin_join(lispval* l, lispenv* e)
 // Define a variable
 lispval* builtin_def(lispval* v, lispenv* env)
 {
-    // Takes one argument: def { { a b } { 1 2 } }
     // Takes two arguments: argument: def {a} 1; def {init} (@ {x y} {x})
     lispval* symbol_wrapper = v->cell[0];
     lispval* value = v->cell[1];
@@ -834,6 +833,29 @@ lispval* builtin_define_lambda(lispval* v, lispenv* env)
     lispval* lambda = lispval_lambda_func(variables, manipulation, new_env);
     return lambda;
 }
+
+// Conditionals
+
+lispval* builtin_ifelse(lispval* v, lispenv* e)
+{
+    // ifelse 1 {a} b
+    LISPVAL_ASSERT(v->count == 3, "Error: function ifelse passed too many arguments. Try ifelse choice result alternative, e.g., if (1 (a) {b})");
+
+    lispval* choice = v->cell[0];
+    lispval* result = v->cell[1];
+    lispval* alternative = v->cell[2];
+		
+		if( choice->type == LISPVAL_NUM && choice->num == 0){
+			lispval* answer = clone_lispval(result);
+			return answer;
+		}else {
+			lispval* answer = clone_lispval(alternative);
+			return answer;
+		}
+}
+
+// Comparators: =, >
+
 // Simple math ops
 lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
 {
@@ -933,6 +955,7 @@ void lispenv_add_builtins(lispenv* env)
     lispenv_add_builtin("join", builtin_join, env);
     lispenv_add_builtin("def", builtin_def, env);
     lispenv_add_builtin("@", builtin_define_lambda, env);
+    lispenv_add_builtin("ifelse", builtin_ifelse, env);
 }
 
 // Evaluate the lispval
