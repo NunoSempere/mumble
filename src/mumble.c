@@ -847,9 +847,18 @@ lispval* builtin_ifelse(lispval* v, lispenv* e)
 		
 		if( choice->type == LISPVAL_NUM && choice->num == 0){
 			lispval* answer = clone_lispval(alternative);
+			if(answer->type == LISPVAL_QEXPR){
+				answer->type = LISPVAL_SEXPR;
+				answer = evaluate_lispval(answer, e);
+			}
 			return answer;
 		}else {
 			lispval* answer = clone_lispval(result);
+			if(answer->type == LISPVAL_QEXPR){
+				// answer = builtin_eval(answer, e);
+				answer->type = LISPVAL_SEXPR;
+				answer = evaluate_lispval(answer, e);
+			}
 			return answer;
 		}
 }

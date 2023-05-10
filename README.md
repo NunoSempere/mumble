@@ -2,7 +2,7 @@
 
 ## About
 
-This is a Lisp written in C. It follows the outline in this [Build Your Own Lisp](https://buildyourownlisp.com/chapter11_variables) book, though it then adds some small tweaks and improvements and quality of life improvements:
+This is a Lisp written in C. It follows the outline in this [Build Your Own Lisp](https://buildyourownlisp.com) book, though it then adds some small tweaks and improvements and quality of life improvements:
 
 - A makefile
 - Configurable verbosity levels
@@ -68,28 +68,32 @@ mumble> join { {1 2} {3 4} }
 mumble> def {x} { 100 }
 mumble> def {y} 100
 mumble> (x y)
-mumble> VERBOSITY=0
-mumble> VERBOSITY=1
 mumble> VERBOSITY=2
 mumble> def {sq} (@ {x} {* x x})
 mumble> sq 44
+mumble> VERBOSITY=1
 mumble> def {sqsum} (@ {x y} {(+ (sq x) (sq y))})
 mumble> sqsum 2 3
+mumble> VERBOSITY=0
 mumble> def {init} (@ {xs} { list((head xs)) } )
 mumble> def {unwrap} (@ {x} { head (list xx) } )
 mumble> init {1 2}
 mumble> ifelse 1 2 3
 mumble> ifelse 0 1 2 
 mumble> ifelse {1 2 3} (1) (1)
+mumble> def {positive} (@ {x} {> x 0})
+mumble> def {fibtest} (@ {x} {if (> x 0) {+ x 1} 0 })
+mumble> fibtest 2
+mumble> def {fibonacci} (@ {x} {if (> x 1) { + (fibonacci (- x 2)) ( fibonacci ( - x 1 ) ) } 1} )
+mumble> fibonacci 4
 ```
 
 ## To do
 
 - [x] Define functions
-- [ ] Define if, = and >
-- [ ] Build fibonacci function
-  - Should look something like:  def {fib} (@ {x} { ifelse x (+ x (fib (- x 1))) 0 } )
+- [x] Define if, = and >
+- [x] Build fibonacci function
 
 ## Gotchas
 
-This doesn't currently run on Windows. But it easily could, with [preprocessor statements from the book].
+This doesn't currently run on Windows. But it easily could, with the preprocessor staments from parsing.c [here](https://buildyourownlisp.com/chapter6_parsing).
