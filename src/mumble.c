@@ -876,6 +876,25 @@ lispval* builtin_equal(lispval* v, lispenv* e)
 }
 
 
+lispval* builtin_greater_than(lispval* v, lispenv* e)
+{
+    // ifelse 1 {a} b
+    LISPVAL_ASSERT(v->count == 2, "Error: function = takes two numeric arguments. Try (= 1 2)");
+
+    lispval* a = v->cell[0];
+    lispval* b = v->cell[1];
+	  
+		LISPVAL_ASSERT(a->type == LISPVAL_NUM, "Error: Functio = only takes numeric arguments.");
+		LISPVAL_ASSERT(b->type == LISPVAL_NUM, "Error: Functio = only takes numeric arguments.");
+
+		if(a->num > b->num){
+			return lispval_num(1);
+		}else {
+			return lispval_num(0);
+		}
+}
+
+
 // Simple math ops
 lispval* builtin_math_ops(char* op, lispval* v, lispenv* e)
 {
@@ -977,6 +996,7 @@ void lispenv_add_builtins(lispenv* env)
     lispenv_add_builtin("@", builtin_define_lambda, env);
     lispenv_add_builtin("ifelse", builtin_ifelse, env);
     lispenv_add_builtin("=", builtin_equal, env);
+    lispenv_add_builtin(">", builtin_greater_than, env);
 }
 
 // Evaluate the lispval
