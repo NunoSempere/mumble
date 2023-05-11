@@ -2,7 +2,7 @@
 
 ## About
 
-This is a Lisp written in C. It follows the outline in this [Build Your Own Lisp](https://buildyourownlisp.com) book, though it then adds some small tweaks and improvements and quality of life improvements:
+This is a Lisp written in C. It follows the outline in this [Build Your Own Lisp](https://buildyourownlisp.com) book, though it then adds tweaks and quality of life improvements:
 
 - A makefile
 - Configurable verbosity levels
@@ -103,6 +103,7 @@ mumble> ++2 10
 - [x] Define functions
 - [x] Define if, = and >
 - [x] Build fibonacci function
+- [x] Build factorial function
 
 ## Gotchas
 
